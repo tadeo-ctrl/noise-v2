@@ -22,6 +22,8 @@ assert(!html.match(/<script>[\s\S]*<\/script>/), 'index.html should not contain 
 assert(css.includes('@font-face'), 'app.css should contain the embedded font definitions');
 assert(css.includes('touch-action:pan-y'), 'feed carousel must preserve native vertical panning');
 assert(css.includes('transform-style:preserve-3d'), 'feed carousel should keep a 3D transform context');
+assert(css.includes('.cmp-opt-media') && css.includes('aspect-ratio:205/444'), 'compose trend picker previews should match post video aspect ratio');
+assert(css.includes('.cmp-opt{display:flex;align-items:flex-start'), 'compose trend picker labels should align to the top of video previews');
 new vm.Script(dataJs, { filename: 'scripts/data.js' });
 new vm.Script(appJs, { filename: 'scripts/app.js' });
 
@@ -33,6 +35,7 @@ assert(appJs.includes('function clipAttrs(id,n,thumb,extra)'), 'clip attribute h
 assert(appJs.includes('function renderCubePosition'), 'feed carousel cube renderer is required');
 assert(appJs.includes('rotateY'), 'feed carousel should use a 3D cube-style transition');
 assert(appJs.includes('setPointerCapture'), 'feed carousel should capture horizontal drags after axis lock');
+assert(appJs.includes('function previewClipId(id)') && appJs.includes('class="cmp-opt-media"') && appJs.includes('clipAttrs(vid,1,true)'), 'compose trend picker should render video-backed trend previews');
 assert(!html.includes('LEEME_EDDY') && !dataJs.includes('LEEME_EDDY') && !appJs.includes('LEEME_EDDY'), 'personal handoff filename should not be referenced');
 assert(!appJs.match(/querySelectorAll\('\[data-vsrc\]'\)\.forEach\(function\(el\)\{mountVid\(el\);/), 'avoid eager mounting entire containers');
 assert(!dataJs.includes('document.'), 'data.js should stay free of DOM work');

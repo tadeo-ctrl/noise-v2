@@ -229,6 +229,23 @@ async function main() {
     assert(afterVertical.scrollTop > 500, `vertical scroll should move feed, got ${afterVertical.scrollTop}`);
     assert(afterVertical.mountedVideos <= 4, `too many videos mounted after vertical scroll: ${afterVertical.mountedVideos}`);
 
+    await evaluate(cdp, sessionId, `document.querySelector('[data-tab="posts"]').click()`);
+    await waitFor(cdp, sessionId, `document.getElementById('s-posts').classList.contains('active')`, 'posts screen');
+    await evaluate(cdp, sessionId, `document.getElementById('post-fab').click()`);
+    await waitFor(cdp, sessionId, `document.getElementById('cmpsheet').classList.contains('open')`, 'compose sheet');
+    await evaluate(cdp, sessionId, `document.getElementById('cmp-select').click()`);
+    await waitFor(cdp, sessionId, `!document.getElementById('cmp-dd').hidden && Boolean(document.querySelector('.cmp-opt-media[data-vsrc]'))`, 'compose trend picker');
+    await sleep(700);
+    const composer = await readComposerState(cdp, sessionId);
+    assert(composer.sheetOpen, 'compose sheet should stay open');
+    assert(composer.pickerOpen, 'trend picker should stay open');
+    assert(composer.previewCount === composer.videoBackedCount, `every trend picker row should be video-backed, got ${composer.videoBackedCount}/${composer.previewCount}`);
+    assert(composer.rowAlign === 'flex-start', `trend picker row text should top-align with previews, got ${composer.rowAlign}`);
+    assert(composer.previewWidth <= 37, `trend picker preview exceeds former swatch width: ${composer.previewWidth}`);
+    assert(composer.previewHeight > composer.previewWidth, `trend picker preview should use vertical post aspect, got ${composer.previewWidth}x${composer.previewHeight}`);
+    assert(composer.previewVideos > 0, 'trend picker should mount at least one visible video preview');
+    assert(composer.mountedVideos <= 4, `too many videos mounted in compose picker: ${composer.mountedVideos}`);
+
     const seriousLogs = cdp.events.filter((event) => (
       event.method === 'Runtime.exceptionThrown' ||
       (event.method === 'Log.entryAdded' && ['error', 'warning'].includes(event.params?.entry?.level))
@@ -245,13 +262,17 @@ async function main() {
 }
 
 async function waitForApp(cdp, sessionId) {
+  await waitFor(cdp, sessionId, 'Boolean(document.querySelector(".topic [data-track]"))', 'feed carousel');
+}
+
+async function waitFor(cdp, sessionId, expression, label) {
   const deadline = Date.now() + 10000;
   while (Date.now() < deadline) {
-    const ready = await evaluate(cdp, sessionId, 'Boolean(document.querySelector(".topic [data-track]"))');
+    const ready = await evaluate(cdp, sessionId, expression);
     if (ready) return;
     await sleep(100);
   }
-  throw new Error('Timed out waiting for feed carousel to render.');
+  throw new Error(`Timed out waiting for ${label}.`);
 }
 
 async function evaluate(cdp, sessionId, expression) {
@@ -283,6 +304,26 @@ async function readState(cdp, sessionId) {
       mountedVideos: document.querySelectorAll('video').length,
       touchAction: getComputedStyle(document.querySelector('[data-track]')).touchAction,
       transformStyle: getComputedStyle(document.querySelector('[data-track]')).transformStyle,
+    };
+  })()`);
+}
+
+async function readComposerState(cdp, sessionId) {
+  return evaluate(cdp, sessionId, `(() => {
+    const sheet = document.getElementById('cmpsheet');
+    const picker = document.getElementById('cmp-dd');
+    const preview = picker.querySelector('.cmp-opt-media[data-vsrc]');
+    const rect = preview.getBoundingClientRect();
+    return {
+      sheetOpen: sheet.classList.contains('open'),
+      pickerOpen: !picker.hidden,
+      previewCount: picker.querySelectorAll('.cmp-opt-media').length,
+      videoBackedCount: picker.querySelectorAll('.cmp-opt-media[data-vsrc]').length,
+      rowAlign: getComputedStyle(picker.querySelector('.cmp-opt')).alignItems,
+      previewWidth: Math.round(rect.width),
+      previewHeight: Math.round(rect.height),
+      previewVideos: picker.querySelectorAll('.cmp-opt-media video').length,
+      mountedVideos: document.querySelectorAll('video').length,
     };
   })()`);
 }

@@ -258,6 +258,9 @@
   function clipSrc(id,n,thumb){return (thumb?'media/thumbs/':'media/')+id+'/0'+n+'.mp4';}
   function clipPoster(id,n){return 'media/'+id+'/0'+n+'.jpg';}
   function clipAttrs(id,n,thumb,extra){return ' data-vsrc="'+clipSrc(id,n,thumb)+'" data-poster="'+clipPoster(id,n)+'"'+(extra||'');}
+  function previewClipId(id){if(vcount(id))return id;var rel=SUBMAP[id]||[];
+    for(var i=0;i<rel.length;i++){if(vcount(rel[i][0]))return rel[i][0];}
+    return null;}
   var isPhone=!!(window.matchMedia&&window.matchMedia('(max-width:600px)').matches);
   // ===== Hard cap on simultaneously-decoding videos. iOS Safari has a small limit on live video
   //       decoders/memory; in Pro mode (charts + clips) this is what tips it into a crash. We keep
@@ -1158,13 +1161,17 @@
     btn.dataset.mode=(cmpTrend&&txt)?'ready':'disabled';btn.style.opacity=(cmpTrend&&txt)?'1':'.5';}
   function cmpRenderOpts(q){q=(q||'').toLowerCase();
     var ids=ORDERS.all.filter(function(id){return !q||T[id].name.toLowerCase().indexOf(q)>=0;});
+    var list=document.getElementById('cmp-dd-list'),dd=document.getElementById('cmp-dd');
+    releaseMediaIn(list);
     document.getElementById('cmp-dd-list').innerHTML=ids.length?ids.map(function(id){var t=T[id];
-      return '<button class="cmp-opt" data-cmptrend="'+id+'"><span class="cmp-opt-sw" style="background:linear-gradient(135deg,'+t.theme[0]+','+t.theme[2]+')"></span><span class="cmp-opt-nm">'+t.name+'</span></button>';
-    }).join(''):'<div class="cmp-opt-empty">No trends match.</div>';}
+      var vid=previewClipId(id),vs=vid?clipAttrs(vid,1,true):'';
+      return '<button class="cmp-opt" data-cmptrend="'+id+'"><span class="cmp-opt-media"'+vs+' style="background-image:'+(t.img?'url('+t.img+'),':'')+'linear-gradient(150deg,'+t.theme[0]+','+t.theme[1]+' 55%,'+t.theme[2]+');"></span><span class="cmp-opt-nm">'+t.name+'</span></button>';
+    }).join(''):'<div class="cmp-opt-empty">No trends match.</div>';
+    if(dd&&!dd.hidden)refreshActiveMedia(dd);}
   function cmpPickTrend(id){cmpTrend=id;var t=T[id];
     document.getElementById('cmp-sel-label').textContent=t.name;
     var sw=document.getElementById('cmp-sel-sw');sw.style.display='block';sw.style.background='linear-gradient(135deg,'+t.theme[0]+','+t.theme[2]+')';
-    document.getElementById('cmp-dd').hidden=true;setCmpPost();
+    var dd=document.getElementById('cmp-dd');releaseMediaIn(dd);dd.hidden=true;setCmpPost();
     document.getElementById('cmp-text').focus();}
   function openCompose(){cmpTrend=null;
     document.getElementById('cmp-sel-label').textContent='Select trend';
@@ -1392,7 +1399,7 @@
     var ult=e.target.closest('.ultab'); if(ult){ulKind=ult.getAttribute('data-ultab');renderUserList(); return;}
     var fab=e.target.closest('#post-fab'); if(fab){openCompose(); return;}
     var fbell=e.target.closest('#feed-bell'); if(fbell){openNotif(); return;}
-    var csl=e.target.closest('#cmp-select'); if(csl){var dd=document.getElementById('cmp-dd');dd.hidden=!dd.hidden;if(!dd.hidden){document.getElementById('cmp-search').focus();} return;}
+    var csl=e.target.closest('#cmp-select'); if(csl){var dd=document.getElementById('cmp-dd');dd.hidden=!dd.hidden;if(!dd.hidden){document.getElementById('cmp-search').focus();refreshActiveMedia(dd);}else{releaseMediaIn(dd);} return;}
     var cx=e.target.closest('#cmp-x'); if(cx){closeAll(); return;}
     var cc=e.target.closest('[data-cmptrend]'); if(cc){cmpPickTrend(cc.getAttribute('data-cmptrend')); return;}
     var cp=e.target.closest('#cmp-post'); if(cp){submitPost(); return;}
@@ -1485,7 +1492,7 @@
   // Pro mode is set globally in Settings; tpsl-on and the Settings switches use the delegated '.switch' handler above.
   var settingsReturn='feed';
   document.getElementById('open-settings').addEventListener('click',function(){settingsReturn=currentScreenKey();show('settings');});
-  function closeAll(){sheet.classList.remove('open');addsheet.classList.remove('open');cmpsheet.classList.remove('open');scrim.classList.remove('open');
+  function closeAll(){releaseMediaIn(cmpsheet);sheet.classList.remove('open');addsheet.classList.remove('open');cmpsheet.classList.remove('open');scrim.classList.remove('open');
     ['fsheet-when','fsheet-sort','fsheet-loc','psheet-sort','psheet-when','csheet-sort'].forEach(function(idd){var el=document.getElementById(idd);if(el)el.classList.remove('open');});}
   scrim.addEventListener('click',closeAll);
   document.querySelectorAll('.diropt').forEach(function(b){b.addEventListener('click',function(){
