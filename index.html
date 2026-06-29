@@ -2450,8 +2450,8 @@ body{font-family:"Ease Standard","EaseStandard","Ease",PP-Diatype,"Diatype",syst
       if(m.vsrc){
         // Clip slide: paint the poster (first frame) as the background immediately, so scrolling
         // never shows the animated gradient flashing before the video is ready. No tint over clips.
-        var poster=m.vsrc.replace(/\.mp4(\?.*)?$/,'.jpg');
-        return '<div class="media" data-vsrc="'+m.vsrc+'" style="background:#0f0f13 center center / cover no-repeat url(\''+poster+'\')"></div>';
+        var poster=m.poster||m.vsrc.replace(/\.mp4(\?.*)?$/,'.jpg');
+        return '<div class="media" data-vsrc="'+m.vsrc+'" data-poster="'+poster+'" style="background:#0f0f13"></div>';
       }
       return '<div class="media">'+clipHTML(t.theme)+'<div class="vtint" style="--c1:'+t.theme[0]+';--c3:'+t.theme[2]+'"></div></div>';
     }
@@ -2522,7 +2522,7 @@ body{font-family:"Ease Standard","EaseStandard","Ease",PP-Diatype,"Diatype",syst
     if(!candleData[id])candleData[id]=seedCandles(t);
     var cn=(leadSlide[id]||0);if(cn>=vcount(id))cn=0;
     var vid=(t.img?'<img class="vid chartvid" src="'+t.img+'" alt="" onerror="this.style.display=\'none\'">':'');
-    var vs=vcount(id)?(' data-vsrc="media/'+id+'/0'+(cn+1)+'.mp4" data-vchart="1"'):'';
+    var vs=vcount(id)?clipAttrs(id,cn+1,false,' data-vchart="1"'):'';
     return '<div class="media chartmedia"'+vs+' data-cid="'+id+'">'+vid+
       '<div class="chartvtint"></div><div class="chartglow"></div>'+
       '<div class="candlelayer">'+
@@ -2537,7 +2537,7 @@ body{font-family:"Ease Standard","EaseStandard","Ease",PP-Diatype,"Diatype",syst
   // REST: gentle ambient drift of the (faint) candle chart on every visible card
   function tickCharts(){if(!proMode||!document.getElementById('s-feed').classList.contains('active'))return;
     document.querySelectorAll('#s-feed .chartmedia:not(.holding)').forEach(function(el){
-      if(!candleData[el.getAttribute('data-cid')])return;
+      if(!isNearViewport(el,120)||!candleData[el.getAttribute('data-cid')])return;
       tickCandle(el.getAttribute('data-cid')); renderCandles(el);});
   }
   setInterval(tickCharts,2200);
@@ -2592,6 +2592,9 @@ body{font-family:"Ease Standard","EaseStandard","Ease",PP-Diatype,"Diatype",syst
   // As clips are added to media/<slug>/, list the slug here with its clip count.
   var CLIPS={agi:3,analog:3,anthropic:3,attentioneconomy:3,bearmarket:3,blindboxes:3,calisthenics:3,cgm:2,chatgpt:3,claude:3,clavicular:3,coinbase:3,dopaminesites:3,eggs:3,elonmusk:3,figureai:3,filmcameras:3,gameboymod:3,gtavi:3,humanoidrobots:3,irl:3,kurtcobain:3,looksmaxxing:3,mewing:2,ninetiesnostalgia:3,obsession:3,onex:3,peptides:3,pokemon:3,privatecredit:3,prowrestling:3,rockstar:3,runclubs:3,samaltman:3,slop:3,starwars:3,tastewashing:3,tesla:3,tiktok:3,unemployment:3,vibecoding:3,wearables:3,wwe:3,zyns:3};
   function vcount(id){return CLIPS[id]||0;}
+  function clipSrc(id,n,thumb){return (thumb?'media/thumbs/':'media/')+id+'/0'+n+'.mp4';}
+  function clipPoster(id,n){return 'media/'+id+'/0'+n+'.jpg';}
+  function clipAttrs(id,n,thumb,extra){return ' data-vsrc="'+clipSrc(id,n,thumb)+'" data-poster="'+clipPoster(id,n)+'"'+(extra||'');}
   var isPhone=!!(window.matchMedia&&window.matchMedia('(max-width:600px)').matches);
   // ===== Hard cap on simultaneously-decoding videos. iOS Safari has a small limit on live video
   //       decoders/memory; in Pro mode (charts + clips) this is what tips it into a crash. We keep
@@ -2614,18 +2617,21 @@ body{font-family:"Ease Standard","EaseStandard","Ease",PP-Diatype,"Diatype",syst
   function isActiveMediaTarget(el){var s=el&&el.closest&&el.closest('.screen');return !s||s.classList.contains('active');}
   function isNearViewport(el,margin){var r=el.getBoundingClientRect(),m=margin==null?260:margin;
     return r.bottom>=-m&&r.top<=window.innerHeight+m&&r.right>=-m&&r.left<=window.innerWidth+m;}
+  function posterFor(el){var src=el.getAttribute('data-vsrc');return el.getAttribute('data-poster')||(src?src.replace(/\.mp4(\?.*)?$/,'.jpg'):'');}
+  function applyMediaPoster(el){if(el._posterSet)return;var poster=posterFor(el);if(!poster)return;
+    el.style.backgroundImage='url("'+poster+'")';el.style.backgroundSize='cover';el.style.backgroundPosition='center';el._posterSet=1;}
   function _teardownVid(el){var v=el._v;if(!v)return;try{v.pause();v.removeAttribute('src');v.load();}catch(e){}v.remove();el._v=null;
     var _tnt=el.querySelector('.vtint');if(_tnt)_tnt.style.display='';}
   function mountVid(el){
     if(el._v||!el.getAttribute('data-vsrc')||!isActiveMediaTarget(el))return;
     var src=el.getAttribute('data-vsrc');
-    var poster=src.replace(/\.mp4(\?.*)?$/,'.jpg'); // first-frame still: shows instantly, no gradient flash
+    var poster=posterFor(el); // first-frame still: shows instantly, no gradient flash
+    applyMediaPoster(el);
     var v=document.createElement('video');
     v.className='vid'+(el.hasAttribute('data-vchart')?' chartvid':'');
     v.muted=true;v.loop=true;v.playsInline=true;v.setAttribute('muted','');v.setAttribute('playsinline','');v.preload=isPhone?'metadata':'auto';v.style.zIndex='1';
     v.setAttribute('poster',poster);
     // Keep the same still on the card itself so unmount (scroll-away) reveals the frame, not the gradient.
-    el.style.backgroundImage='url("'+poster+'")';el.style.backgroundSize='cover';el.style.backgroundPosition='center';
     v.addEventListener('error',function(){if(el._v===v)el._v=null;v.remove();});
     v.src=withV(src);
     el.appendChild(v);el._v=v;
@@ -2642,14 +2648,16 @@ body{font-family:"Ease Standard","EaseStandard","Ease",PP-Diatype,"Diatype",syst
   function releaseMediaIn(container){if(!container)return;container.querySelectorAll('[data-vsrc]').forEach(function(el){unmountVid(el);try{vmount.unobserve(el);}catch(e){}});}
   function refreshActiveMedia(container){container=container||document.querySelector('.screen.active');if(!container)return;
     observeVids(container);
-    container.querySelectorAll('[data-vsrc]').forEach(function(el){if(isNearViewport(el,isPhone?180:360))mountVid(el);else unmountVid(el);});}
+    container.querySelectorAll('[data-vsrc]').forEach(function(el){
+      if(isNearViewport(el,isPhone?180:360)){applyMediaPoster(el);mountVid(el);}else unmountVid(el);
+    });}
   // Images for a trend: the multi-image array if present, else the single hero image.
   function imgsOf(t){var arr=[];if(t.img)arr.push(t.img);if(t.imgs)t.imgs.forEach(function(u){if(arr.indexOf(u)<0)arr.push(u);});return arr;}
   // Feed media = 3 image slides (padded from the trend's images), plus the editorial quote.
   function mediaItemsOf(t){
     var imgs=imgsOf(t);
     var items=[];
-    for(var n=0;n<3;n++){ items.push({k:'img', u: imgs.length?imgs[n%imgs.length]:null, vsrc:(n<vcount(t.id)?('media/'+t.id+'/0'+(n+1)+'.mp4'):null) }); }
+    for(var n=0;n<3;n++){ items.push({k:'img', u: imgs.length?imgs[n%imgs.length]:null, vsrc:(n<vcount(t.id)?clipSrc(t.id,n+1,false):null), poster:(n<vcount(t.id)?clipPoster(t.id,n+1):null) }); }
     for(var i=0;i<t.media.length;i++){var k=t.media[i].k;if(k!=='img'&&k!=='vid')items.push(t.media[i]);}
     return items;
   }
@@ -2934,7 +2942,7 @@ body{font-family:"Ease Standard","EaseStandard","Ease",PP-Diatype,"Diatype",syst
   function carTiles(t,id){
     var imgs=imgsOf(t),tiles=[];
     for(var i=0;i<3;i++){var u=imgs.length?imgs[i%imgs.length]:null;var a=t.theme[i%3],b=t.theme[(i+1)%3];
-      var vs=(i<vcount(id))?(' data-vsrc="media/'+id+'/0'+(i+1)+'.mp4"'):'';
+      var vs=(i<vcount(id))?clipAttrs(id,i+1,false):'';
       tiles.push('<button class="dtile" data-feedgo="'+id+'" data-feedidx="'+i+'"'+vs+' style="background:linear-gradient('+(140+i*22)+'deg,'+a+','+b+')">'+
         (u?'<img class="dtile-vid" src="'+u+'" alt="" onerror="this.style.display=\'none\'">':'')+'</button>');}
     return tiles.join('');
@@ -3148,18 +3156,14 @@ body{font-family:"Ease Standard","EaseStandard","Ease",PP-Diatype,"Diatype",syst
     host.innerHTML=t.sub.map(function(x,i){var st=T[x.id];if(!st)return '';
       var up=(st.chg||0)>=0,chg=(up?'+':'')+Math.round(st.chg||0)+'%';
       // Play a clip on the related-trend card when that sub-trend has clips.
-      var vs=vcount(x.id)?(' data-vsrc="media/'+x.id+'/0'+((i%vcount(x.id))+1)+'.mp4"'):'';
+      var vs=vcount(x.id)?clipAttrs(x.id,(i%vcount(x.id))+1,true):'';
       return '<button class="subcard" data-go-trend="'+x.id+'">'+
         '<span class="subcard-img"'+vs+' style="background:linear-gradient(150deg,'+st.theme[0]+','+(st.theme[2]||st.theme[1])+')">'+(st.img?'<img src="'+st.img+'" alt="" onerror="this.style.display=\'none\'">':'')+'</span>'+
         '<span class="subcard-nm">'+st.name+'</span>'+
         '<span class="subcard-row"><span class="subcard-deg">'+Math.round(st.deg)+'°</span><span class="subcard-chg '+(up?'up':'dn')+'">'+chg+'</span></span>'+
         '<span class="subcard-imp">'+x.impact+'% impact</span></button>';
     }).join('');
-    // Mount the related-card clips immediately (the lazy observer's initial geometry
-    // check is unreliable while the detail panel is fading/animating in). The observer
-    // still manages horizontal lazy-unmount as the row scrolls.
-    observeVids(host);
-    host.querySelectorAll('[data-vsrc]').forEach(function(el){mountVid(el);});
+    refreshActiveMedia(host);
     var nd=Math.round(netPull(id)*(t.deg/100)*0.4),el=document.getElementById('d-subnet');
     if(el)el.innerHTML='<span class="sn-live"></span>Forces pulling this trend <b class="'+(nd>=0?'up':'dn')+'">'+(nd>=0?'+':'')+nd+'°</b> right now';
   }
@@ -3201,7 +3205,6 @@ body{font-family:"Ease Standard","EaseStandard","Ease",PP-Diatype,"Diatype",syst
     det.classList.remove('prodetail');
     var car=document.getElementById('d-car'); releaseMediaIn(car); car.innerHTML=carTiles(t,id); car.scrollLeft=0;
     observeVids(car);
-    car.querySelectorAll('[data-vsrc]').forEach(function(el){mountVid(el);});
     document.getElementById('d-name').textContent=t.name;
     document.getElementById('d-user').textContent=t.user;
     var dfb=document.getElementById('d-follow');
@@ -3229,11 +3232,11 @@ body{font-family:"Ease Standard","EaseStandard","Ease",PP-Diatype,"Diatype",syst
       var u=dcIm.length?dcIm[i%dcIm.length]:null;
       // Collections aren't a single trend, so recycle a clip from a member trend that has one.
       var members=(window.COLL_TRENDS&&COLL_TRENDS[id+'#'+i])||[id], cvs='';
-      for(var mi=0;mi<members.length;mi++){var mm=members[mi];if(vcount(mm)){cvs=' data-vsrc="media/'+mm+'/0'+((i%vcount(mm))+1)+'.mp4"';break;}}
+      for(var mi=0;mi<members.length;mi++){var mm=members[mi];if(vcount(mm)){cvs=clipAttrs(mm,(i%vcount(mm))+1,true);break;}}
       return '<div class="cs-card" data-collection="'+i+'"><span class="cs-cover"'+cvs+' style="background-image:'+(u?'url('+u+'),':'')+'linear-gradient('+(120+i*40)+'deg,'+t.theme[0]+','+t.theme[2]+');background-size:cover;background-position:center"></span>'+
         '<div class="cs-ct">'+cl.coll+'</div><div class="cs-cby">'+cl.u+'</div></div>';
     }).join('');
-    (function(){var c=document.getElementById('d-curators');observeVids(c);c.querySelectorAll('[data-vsrc]').forEach(function(el){mountVid(el);});})();
+    refreshActiveMedia(document.getElementById('d-curators'));
     document.getElementById('sec-moves').style.display=(liveTL.items&&liveTL.items.length)?'':'none';
     document.getElementById('sec-colls').style.display=(COLLECTIONS[id]&&COLLECTIONS[id].length)?'':'none';
     show('detail');
@@ -3249,7 +3252,7 @@ body{font-family:"Ease Standard","EaseStandard","Ease",PP-Diatype,"Diatype",syst
   function lighten(hex,amt){var r=_rgb(hex).map(function(x){return Math.round(x+(255-x)*amt);});return '#'+r.map(function(x){return ('0'+x.toString(16)).slice(-2);}).join('');}
   function accentOf(theme){var best=theme[0];theme.forEach(function(h){if(lum(h)>lum(best))best=h;});var g=0;while(lum(best)<165&&g<6){best=lighten(best,0.22);g++;}return best;}
   function trendRowHTML(id){var t=T[id];if(!t)return '';
-    var rvs=vcount(id)?(' data-vsrc="media/'+id+'/01.mp4"'):'';
+    var rvs=vcount(id)?clipAttrs(id,1,true):'';
     return '<div class="trend-row" data-go-trend="'+id+'"><span class="trend-sw"'+rvs+' style="background-color:#16161c;background-image:'+(t.img?'url('+t.img+'),':'')+'linear-gradient(135deg,'+t.theme[0]+','+t.theme[2]+');background-size:cover;background-position:center"></span>'+
       '<div class="trend-id"><div class="trend-nm">'+t.name+'</div><div class="trend-meta">'+t.fc+' curators · '+(t.kind==='niche'?'Niche':'Trending')+'</div></div>'+
       '<span class="trend-deg '+(t.up?'':'dn')+'">'+t.deg+'°</span></div>';}
@@ -3259,7 +3262,7 @@ body{font-family:"Ease Standard","EaseStandard","Ease",PP-Diatype,"Diatype",syst
       var u=imgs[i%(imgs.length||1)];
       var a=t.theme[i%3],bcol=t.theme[(i+1)%3];
       var bg=(u?'url('+u+'),':'')+'linear-gradient('+(140+i*18)+'deg,'+a+','+bcol+')';
-      var vs=vcount(id)?(' data-vsrc="media/'+id+'/0'+((i%vcount(id))+1)+'.mp4"'):'';
+      var vs=vcount(id)?clipAttrs(id,(i%vcount(id))+1,true):'';
       tiles+='<span class="ex-tile"'+vs+' style="background-image:'+bg+'"></span>';
     }
     return '<div class="trend-row ex-row" data-go-trend="'+id+'">'+
@@ -3311,7 +3314,7 @@ body{font-family:"Ease Standard","EaseStandard","Ease",PP-Diatype,"Diatype",syst
     releaseMediaIn(document.getElementById('pf-leads'));releaseMediaIn(document.getElementById('pf-active'));
     document.getElementById('pf-leads').innerHTML=(p.leads||[]).map(trendRowHTML).join('');
     document.getElementById('pf-active').innerHTML=(p.active||[]).map(trendRowHTML).join('');
-    ['pf-leads','pf-active'].forEach(function(gid){var c=document.getElementById(gid);if(!c)return;observeVids(c);c.querySelectorAll('[data-vsrc]').forEach(function(el){mountVid(el);});});
+    ['pf-leads','pf-active'].forEach(function(gid){refreshActiveMedia(document.getElementById(gid));});
     var pf=document.getElementById('pf-follow'); pf.classList.remove('on');
     if(handle==='@you'){pf.dataset.self='1';pf.textContent='Edit profile';}else{pf.dataset.self='';pf.textContent='Follow';}
     profileReturn=currentScreenKey();
@@ -3388,7 +3391,7 @@ body{font-family:"Ease Standard","EaseStandard","Ease",PP-Diatype,"Diatype",syst
     releaseMediaIn(document.getElementById('pd-content'));
     document.getElementById('pd-content').innerHTML=
       '<div class="pd-post">'+
-        '<span class="post-th pd-th" data-go-trend="'+p.id+'"'+(vcount(p.id)?(' data-vsrc="media/'+p.id+'/0'+((curPost%vcount(p.id))+1)+'.mp4"'):'')+' style="background-image:'+(t.img?'url('+t.img+'),':'')+'linear-gradient(135deg,'+t.theme[0]+','+t.theme[2]+');background-size:cover;background-position:center"></span>'+
+        '<span class="post-th pd-th" data-go-trend="'+p.id+'"'+(vcount(p.id)?clipAttrs(p.id,(curPost%vcount(p.id))+1,true):'')+' style="background-image:'+(t.img?'url('+t.img+'),':'')+'linear-gradient(135deg,'+t.theme[0]+','+t.theme[2]+');background-size:cover;background-position:center"></span>'+
         '<div class="pd-meta">'+
           '<span class="post-trend" data-go-trend="'+p.id+'">'+t.name+'</span><span class="post-sep">·</span>'+
           userChip(p.u)+'<span class="post-sep">·</span><span class="post-time">'+p.t+' ago</span></div>'+
@@ -3398,8 +3401,7 @@ body{font-family:"Ease Standard","EaseStandard","Ease",PP-Diatype,"Diatype",syst
           '<span class="pr static">'+ICON_CMT+' '+n+'</span><span class="pr" data-share>'+ICON_SHARE+' Share</span></div></div>'+
       '<div class="pd-cmt-h"><span>'+n+' comments</span><button class="exf exf-inline" id="cmt-sort" data-csortsheet><span id="cmt-sort-lbl">'+CSORT_LABEL[cmtSort]+'</span><svg class="exf-car" viewBox="0 0 24 24"><path d="M6 9l6 6 6-6"/></svg></button></div>'+
       '<div id="pd-comments"></div>';
-    var _pdt=document.getElementById('pd-content').querySelector('.pd-th[data-vsrc]');
-    if(_pdt)mountVid(_pdt);
+    refreshActiveMedia(document.getElementById('pd-content'));
     renderComments();
   }
   function setReplyTo(cid){replyTo=cid;var node=findNode(curPost,cid);
@@ -3459,14 +3461,13 @@ body{font-family:"Ease Standard","EaseStandard","Ease",PP-Diatype,"Diatype",syst
     grid.innerHTML=ids.map(function(id,gi){var s=T[id];if(!s)return '';
       var g='linear-gradient(160deg,'+s.theme[0]+','+(s.theme[2]||s.theme[1])+')';
       var im=imgsOf(s),u=im.length?im[0]:null;
-      var gvs=vcount(id)?(' data-vsrc="media/'+id+'/0'+((gi%vcount(id))+1)+'.mp4"'):'';
+      var gvs=vcount(id)?clipAttrs(id,(gi%vcount(id))+1,true):'';
       return '<button class="gcard" data-go-trend="'+id+'">'+
         '<span class="gcard-img"'+gvs+' style="background-image:'+(u?'url('+u+'),':'')+g+';background-size:cover;background-position:center"></span>'+
         '<span class="gcard-deg">'+Math.round(s.deg)+'°</span>'+
         '<span class="gcard-nm">'+s.name+'</span></button>';
     }).join('');
-    observeVids(grid);
-    grid.querySelectorAll('[data-vsrc]').forEach(function(el){mountVid(el);});
+    refreshActiveMedia(grid);
   }
   function openLightbox(grad,cap){document.getElementById('lb-img').style.background=grad;
     document.getElementById('lb-cap').textContent=cap;document.getElementById('lightbox').classList.add('open');}
@@ -3597,7 +3598,7 @@ body{font-family:"Ease Standard","EaseStandard","Ease",PP-Diatype,"Diatype",syst
     var postsList=document.getElementById('posts-list');releaseMediaIn(postsList);
     postsList.innerHTML=arr.map(function(p){var t=T[p.id];
       var pid=POSTS.indexOf(p), v=postVotes[pid]||'', shown=p.up+(v==='up'?1:0)-(v==='down'?1:0);
-      var pvs=vcount(p.id)?(' data-vsrc="media/'+p.id+'/0'+((pid%vcount(p.id))+1)+'.mp4"'):'';
+      var pvs=vcount(p.id)?clipAttrs(p.id,(pid%vcount(p.id))+1,true):'';
       return '<div class="post" data-post="'+pid+'">'+
         '<span class="post-media" data-go-trend="'+p.id+'"'+pvs+' style="background-image:'+(t.img?'url('+t.img+'),':'')+'linear-gradient(150deg,'+t.theme[0]+','+t.theme[1]+' 55%,'+t.theme[2]+');background-size:cover;background-position:center"></span>'+
         '<div class="post-main">'+
@@ -3614,8 +3615,7 @@ body{font-family:"Ease Standard","EaseStandard","Ease",PP-Diatype,"Diatype",syst
     }).join('');
     // Play clips on the post placeholders (only 8 posts, all map to trends with clips).
     var _pl=document.getElementById('posts-list');
-    observeVids(_pl);
-    _pl.querySelectorAll('[data-vsrc]').forEach(function(el){mountVid(el);});
+    refreshActiveMedia(_pl);
     var pe=document.getElementById('posts-empty'); if(pe)pe.style.display=arr.length?'none':'block';
   }
   var POSTSORT_OPTS=[['best','Best','Smartest mix of hot & recent'],['top','Top','Most upvoted'],['new','New','Most recent first']];
@@ -3851,14 +3851,14 @@ body{font-family:"Ease Standard","EaseStandard","Ease",PP-Diatype,"Diatype",syst
     if(!open.length){oh='<div class="fc-blank"><p>No open signals.<br><span>Find a topic you have a read on and forecast where it\'s heading.</span></p><button class="cta-place" data-tab="feed" style="width:auto;padding:11px 18px;border-radius:var(--r-md);">Open Feed</button></div>';}
     positions.forEach(function(p,idx){ if(p.status!=='open')return; var t=T[p.id],ahead=(p.dir==='rise')===t.up,
       cond=(p.dir==='rise'?'Rise from ':'Cool from ')+(p.entry!=null?p.entry:p.target)+'° → '+p.target+'°';
-      oh+='<div class="pcard"><span class="pos-th" data-go-trend="'+p.id+'"'+(vcount(p.id)?(' data-vsrc="media/'+p.id+'/01.mp4"'):'')+' style="background-image:'+(t.img?'url('+t.img+'),':'')+'linear-gradient(135deg,'+t.theme[0]+','+t.theme[2]+')"></span><div class="pos-body" data-signal="'+idx+'"><div class="prow"><h3>'+t.name+'</h3><span class="dirchip '+p.dir+'">'+(p.dir==='rise'?'Rise ▲':'Cool ▼')+'</span></div>'+
+      oh+='<div class="pcard"><span class="pos-th" data-go-trend="'+p.id+'"'+(vcount(p.id)?clipAttrs(p.id,1,true):'')+' style="background-image:'+(t.img?'url('+t.img+'),':'')+'linear-gradient(135deg,'+t.theme[0]+','+t.theme[2]+')"></span><div class="pos-body" data-signal="'+idx+'"><div class="prow"><h3>'+t.name+'</h3><span class="dirchip '+p.dir+'">'+(p.dir==='rise'?'Rise ▲':'Cool ▼')+'</span></div>'+
         '<div class="pmeta">'+p.stake+' credits · '+((p.lev||1)>1?(p.lev+'× · '):'')+cond+' · wins ~'+fmt(p.profit!=null?p.profit:(p.payout-p.stake))+'</div>'+
         '<div class="pstate"><span class="when">resolves in '+p.day+'d · '+(ahead?'currently ahead':'currently behind')+'</span>'+
         '<button class="btn-resolve" data-resolve="'+idx+'">Resolve now</button></div></div></div>';
     });
     releaseMediaIn(document.getElementById('fc-open'));
     document.getElementById('fc-open').innerHTML=oh;
-    (function(){var c=document.getElementById('fc-open');observeVids(c);c.querySelectorAll('[data-vsrc]').forEach(function(el){mountVid(el);});})();
+    refreshActiveMedia(document.getElementById('fc-open'));
     // HISTORY (ledger, newest first)
     var hh='';
     ledger.slice().reverse().forEach(function(e){
@@ -3910,7 +3910,7 @@ body{font-family:"Ease Standard","EaseStandard","Ease",PP-Diatype,"Diatype",syst
     var statusTxt=ahead?'On track':'Off track';
     var html=''+
       '<div class="sig-hero">'+
-        '<span class="sig-th" data-go-trend="'+p.id+'"'+(vcount(p.id)?(' data-vsrc="media/'+p.id+'/01.mp4"'):'')+' style="background-image:'+(t.img?'url('+t.img+'),':'')+'linear-gradient(135deg,'+t.theme[0]+','+t.theme[2]+')"></span>'+
+        '<span class="sig-th" data-go-trend="'+p.id+'"'+(vcount(p.id)?clipAttrs(p.id,1,true):'')+' style="background-image:'+(t.img?'url('+t.img+'),':'')+'linear-gradient(135deg,'+t.theme[0]+','+t.theme[2]+')"></span>'+
         '<div class="sig-htext">'+
           '<div class="sig-trend" data-go-trend="'+p.id+'">'+t.name+'</div>'+
           '<div class="sig-chips"><span class="dirchip '+p.dir+'">'+(rise?'Rise ▲':'Cool ▼')+'</span>'+
@@ -3957,7 +3957,7 @@ body{font-family:"Ease Standard","EaseStandard","Ease",PP-Diatype,"Diatype",syst
       '</div>';
     releaseMediaIn(document.getElementById('sig-content'));
     document.getElementById('sig-content').innerHTML=html;
-    (function(){var c=document.getElementById('sig-content');observeVids(c);c.querySelectorAll('[data-vsrc]').forEach(function(el){mountVid(el);});})();
+    refreshActiveMedia(document.getElementById('sig-content'));
     show('signaldetail');
     var sa=document.getElementById('sig-scroll'); if(sa)sa.scrollTop=0;
   }

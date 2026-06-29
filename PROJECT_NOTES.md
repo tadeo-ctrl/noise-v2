@@ -21,6 +21,8 @@ All application code lives in `index.html`.
 - `mountVid()` / `unmountVid()` - lazy video mounting with the iOS memory cap (`MAXVIDS`).
 - `releaseMediaIn()` / `refreshActiveMedia()` - media lifecycle cleanup; only the active screen should
   have mounted `<video>` elements.
+- `clipSrc()` / `clipAttrs()` - full-screen Feed/detail clips use `media/<trend>/...`; small cards use
+  `media/thumbs/<trend>/...` to preserve quality where it matters while reducing thumbnail decode cost.
 - `renderExploreChunk()` - batched Search rendering; do not render every trend and every clip at once.
 - `lockPhoneShellScroll()` - keeps the `#phone` shell fixed at `scrollTop = 0`; only internal
   `.scrollarea` elements should scroll.
@@ -42,5 +44,14 @@ deployed URL with a query parameter such as `?v=8` or `?v=9`.
 - On mobile, videos use `preload="metadata"` and do not blob-prefetch. The target behavior is instant
   poster display, a small number of mounted videos, and just-in-time loading near the viewport.
 - For older phones, prefer 540-576px width at 24/30fps. Keep 720p only where the difference is meaningful.
+- Add a matching `media/thumbs/<trend>/0N.mp4` file for every `media/<trend>/0N.mp4` clip. These thumbnail
+  variants should be H.264, muted, faststart, 360px wide, and 30fps.
 - Closed bottom sheets must use `visibility:hidden` and `pointer-events:none`; avoid large offscreen
   transforms that can create scrollable overflow inside `#phone`.
+
+## Basic Verification
+```bash
+node scripts/basic-regression.mjs
+```
+
+The script checks inline JavaScript syntax, key media lifecycle safeguards, and thumbnail clip coverage.
