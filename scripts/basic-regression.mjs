@@ -35,6 +35,7 @@ assert(appJs.includes('function clipAttrs(id,n,thumb,extra)'), 'clip attribute h
 assert(appJs.includes('function renderCubePosition'), 'feed carousel cube renderer is required');
 assert(appJs.includes('rotateY'), 'feed carousel should use a 3D cube-style transition');
 assert(appJs.includes('setPointerCapture'), 'feed carousel should capture horizontal drags after axis lock');
+assert(appJs.includes('if(c.n<2)') && appJs.includes("cm.classList.contains('holding')"), 'single-slide Pro feed tracks should leave horizontal drags to the chart hold interaction');
 assert(appJs.includes('function previewClipId(id)') && appJs.includes('class="cmp-opt-media"') && appJs.includes('clipAttrs(vid,1,true)'), 'compose trend picker should render video-backed trend previews');
 assert(!html.includes('LEEME_EDDY') && !dataJs.includes('LEEME_EDDY') && !appJs.includes('LEEME_EDDY'), 'personal handoff filename should not be referenced');
 assert(!appJs.match(/querySelectorAll\('\[data-vsrc\]'\)\.forEach\(function\(el\)\{mountVid\(el\);/), 'avoid eager mounting entire containers');

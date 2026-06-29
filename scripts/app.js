@@ -439,11 +439,26 @@
     refreshActiveMedia(el);
   }
   function wireCarousel(el,id){
-    var track=el.querySelector('[data-track]'),x0=0,y0=0,t0=0,axis='',pid=null,start=0;
-    renderCubePosition(el,id,carousel[id].i,true);
+    var track=el.querySelector('[data-track]'),c=carousel[id],x0=0,y0=0,t0=0,axis='',pid=null,start=0;
+    if(!track||!c)return;
+    renderCubePosition(el,id,c.i,true);
+    if(c.n<2){
+      track.addEventListener('pointerdown',function(e){
+        if(e.button!=null&&e.button!==0)return;
+        x0=e.clientX;y0=e.clientY;t0=Date.now();pid=e.pointerId;
+      });
+      track.addEventListener('pointerup',function(e){
+        if(pid!==e.pointerId)return;
+        var dx=e.clientX-x0,dy=e.clientY-y0,dt=Math.max(1,Date.now()-t0);
+        if(Math.abs(dx)<8&&Math.abs(dy)<8&&dt<350)openDetail(id);
+        pid=null;
+      });
+      track.addEventListener('pointercancel',function(e){if(pid===e.pointerId)pid=null;});
+      return;
+    }
     track.addEventListener('pointerdown',function(e){
       if(e.button!=null&&e.button!==0)return;
-      x0=e.clientX;y0=e.clientY;t0=Date.now();axis='';pid=e.pointerId;start=carousel[id].i;
+      x0=e.clientX;y0=e.clientY;t0=Date.now();axis='';pid=e.pointerId;start=c.i;
     });
     track.addEventListener('pointermove',function(e){
       if(pid!==e.pointerId)return;

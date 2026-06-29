@@ -229,6 +229,33 @@ async function main() {
     assert(afterVertical.scrollTop > 500, `vertical scroll should move feed, got ${afterVertical.scrollTop}`);
     assert(afterVertical.mountedVideos <= 4, `too many videos mounted after vertical scroll: ${afterVertical.mountedVideos}`);
 
+    await evaluate(cdp, sessionId, `document.getElementById('set-pro').click()`);
+    await waitFor(cdp, sessionId, `document.getElementById('phone').classList.contains('pro') && Boolean(document.querySelector('#s-feed .chartmedia'))`, 'pro mode feed');
+    const proDrag = await mouseDragAndRead(cdp, sessionId, [
+      [90, 360],
+      [165, 360],
+      [245, 360],
+      [315, 360],
+    ], `(() => {
+      const chart = document.querySelector('#s-feed .chartmedia');
+      const read = chart && chart.querySelector('.cc-read');
+      return {
+        holding: Boolean(chart && chart.classList.contains('holding')),
+        readout: read ? read.textContent : '',
+        readoutX: read ? read.dataset.x : '',
+        carouselDragging: Boolean(document.querySelector('#s-feed .mtrack.dragging')),
+        scrollTop: Math.round(document.getElementById('feed').scrollTop),
+        mountedVideos: document.querySelectorAll('video').length,
+      };
+    })()`);
+    assert(proDrag.holding, 'Pro mode horizontal drag should activate chart hold');
+    assert(proDrag.readout && proDrag.readout.includes('°'), `Pro chart crosshair should show a degree readout, got ${proDrag.readout}`);
+    assert(proDrag.readoutX, 'Pro chart crosshair should track the horizontal pointer position');
+    assert(!proDrag.carouselDragging, 'Pro mode horizontal drag should not activate carousel dragging');
+    assert(proDrag.scrollTop < 12, `Pro chart horizontal drag should not scroll feed, got ${proDrag.scrollTop}`);
+    assert(proDrag.mountedVideos <= 4, `too many videos mounted during Pro chart drag: ${proDrag.mountedVideos}`);
+    await waitFor(cdp, sessionId, `!document.querySelector('#s-feed .chartmedia.holding')`, 'pro chart hold release');
+
     await evaluate(cdp, sessionId, `document.querySelector('[data-tab="posts"]').click()`);
     await waitFor(cdp, sessionId, `document.getElementById('s-posts').classList.contains('active')`, 'posts screen');
     await evaluate(cdp, sessionId, `document.getElementById('post-fab').click()`);
@@ -338,6 +365,21 @@ async function mouseDrag(cdp, sessionId, points) {
   }
   const end = points[points.length - 1];
   await cdp.send('Input.dispatchMouseEvent', { type: 'mouseReleased', x: end[0], y: end[1], button: 'left', buttons: 0, clickCount: 1 }, sessionId);
+}
+
+async function mouseDragAndRead(cdp, sessionId, points, expression) {
+  const [start, ...rest] = points;
+  await cdp.send('Input.dispatchMouseEvent', { type: 'mouseMoved', x: start[0], y: start[1], button: 'none' }, sessionId);
+  await cdp.send('Input.dispatchMouseEvent', { type: 'mousePressed', x: start[0], y: start[1], button: 'left', buttons: 1, clickCount: 1 }, sessionId);
+  for (const [x, y] of rest) {
+    await cdp.send('Input.dispatchMouseEvent', { type: 'mouseMoved', x, y, button: 'left', buttons: 1 }, sessionId);
+    await sleep(60);
+  }
+  await sleep(140);
+  const state = await evaluate(cdp, sessionId, expression);
+  const end = points[points.length - 1];
+  await cdp.send('Input.dispatchMouseEvent', { type: 'mouseReleased', x: end[0], y: end[1], button: 'left', buttons: 0, clickCount: 1 }, sessionId);
+  return state;
 }
 
 main().catch((error) => {

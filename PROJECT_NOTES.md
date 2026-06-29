@@ -35,7 +35,8 @@ The app intentionally stays framework-free:
   `media/thumbs/<trend>/...` to preserve quality where it matters while reducing thumbnail decode cost.
 - `wireCarousel()` / `renderCubePosition()` - Feed horizontal swipes are axis-locked with
   `touch-action: pan-y`; vertical swipes remain native feed scrolling while horizontal swipes render the
-  cube-style media transition.
+  cube-style media transition. One-slide tracks, including Pro mode charts, skip horizontal carousel
+  dragging so the chart hold/scrub gesture owns horizontal movement.
 - `cmpRenderOpts()` - compose-sheet trend picker rows use the same thumbnail clip pipeline as Posts,
   falling back to a related trend clip when a trend has no dedicated media; previews are constrained to
   the post-card aspect ratio and released when the picker closes.
@@ -46,7 +47,9 @@ The app intentionally stays framework-free:
 - `lockPhoneShellScroll()` - keeps the `#phone` shell fixed at `scrollTop = 0`; only internal
   `.scrollarea` elements should scroll.
 - `ASSET_V` - cache-busting version for `.mp4` assets. Bump this when clips are re-encoded.
-- Pro mode: `buildProDetail`, `chartHTML`, and the hold gesture handled through pointer events.
+- Pro mode: `buildProDetail`, `chartHTML`, and the hold gesture handled through pointer events. Feed
+  charts use horizontal movement for the crosshair; do not attach carousel dragging to those one-slide
+  chart tracks.
 
 ## Vercel Deployment
 ```bash
