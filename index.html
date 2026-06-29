@@ -51,7 +51,7 @@ body{font-family:"Ease Standard","EaseStandard","Ease",PP-Diatype,"Diatype",syst
 @media (prefers-reduced-transparency:reduce){.glass{background:rgba(26,28,34,.94);backdrop-filter:none;-webkit-backdrop-filter:none;}}
 
 .phone{width:402px;max-width:94vw;height:874px;max-height:92vh;background:var(--bg);border-radius:46px;position:relative;
-  overflow:hidden;display:flex;flex-direction:column;
+  overflow:hidden;overscroll-behavior:contain;display:flex;flex-direction:column;
   box-shadow:0 1px 0 rgba(255,255,255,.06) inset,0 40px 80px -24px rgba(0,0,0,.6),0 0 0 11px #111216,0 0 0 12px #2c2d33;}
 .statusbar{position:absolute;top:0;left:0;right:0;height:50px;z-index:60;display:flex;align-items:center;justify-content:space-between;
   padding:14px 28px 0;font-size:13px;font-weight:600;color:#fff;pointer-events:none;text-shadow:0 1px 3px rgba(0,0,0,.35);}
@@ -201,9 +201,10 @@ body{font-family:"Ease Standard","EaseStandard","Ease",PP-Diatype,"Diatype",syst
 .scrim.open{opacity:1;pointer-events:auto;}
 .sheet{position:absolute;left:8px;right:8px;bottom:8px;z-index:81;border-radius:34px;padding:8px 22px 24px;
   max-height:calc(100% - 16px);overflow-y:auto;
-  transform:translateY(120%);transition:transform .42s cubic-bezier(.2,.85,.25,1);}
+  pointer-events:none;opacity:0;visibility:hidden;transform:translateY(100%);
+  transition:transform .42s cubic-bezier(.2,.85,.25,1),opacity .18s ease,visibility 0s linear .42s;}
 .sheet::-webkit-scrollbar{width:0;}
-.sheet.open{transform:none;}
+.sheet.open{pointer-events:auto;opacity:1;visibility:visible;transform:none;transition:transform .42s cubic-bezier(.2,.85,.25,1),opacity .18s ease,visibility 0s;}
 .grab{width:40px;height:5px;border-radius:3px;background:rgba(255,255,255,.3);margin:8px auto 18px;}
 .sheet-h{font-weight:800;font-size:23px;letter-spacing:-.02em;margin-bottom:4px;}
 .sheet-h span{color:var(--rel);}
@@ -2534,7 +2535,7 @@ body{font-family:"Ease Standard","EaseStandard","Ease",PP-Diatype,"Diatype",syst
   }
 
   // REST: gentle ambient drift of the (faint) candle chart on every visible card
-  function tickCharts(){if(!proMode)return;
+  function tickCharts(){if(!proMode||!document.getElementById('s-feed').classList.contains('active'))return;
     document.querySelectorAll('#s-feed .chartmedia:not(.holding)').forEach(function(el){
       if(!candleData[el.getAttribute('data-cid')])return;
       tickCandle(el.getAttribute('data-cid')); renderCandles(el);});
@@ -2595,30 +2596,33 @@ body{font-family:"Ease Standard","EaseStandard","Ease",PP-Diatype,"Diatype",syst
   // ===== Hard cap on simultaneously-decoding videos. iOS Safari has a small limit on live video
   //       decoders/memory; in Pro mode (charts + clips) this is what tips it into a crash. We keep
   //       at most MAXVIDS mounted and free the oldest first — no feature is removed, just bounded. =====
-  var MAXVIDS = isPhone ? 6 : 12;
+  var MAXVIDS = isPhone ? 4 : 12;
   var _vlive = []; var _pf = {};
   // Cache-bust clips by version so re-encodes (same filename) always refetch instead of serving a
   // stale, oversized file from the browser cache. Bump ASSET_V whenever the .mp4s are re-encoded.
   var ASSET_V = 'v20260629d';
   function withV(u){ return u + (u.indexOf('?')>=0?'&':'?') + ASSET_V; }
-  // Prefetch a clip's bytes into the browser cache so it plays instantly when scrolled to (TikTok-style).
-  function prefetchURL(u){ if(!u)return; u=withV(u); if(_pf[u])return; _pf[u]=1;
+  // Prefetch only off-phone. Mobile Safari is far more constrained by media memory than network here.
+  function prefetchURL(u){ if(!u||isPhone)return; u=withV(u); if(_pf[u])return; _pf[u]=1;
     try{ fetch(u,{cache:'force-cache'}).then(function(r){return r&&r.blob&&r.blob();}).catch(function(){}); }catch(e){} }
   function prefetchAhead(el){ if(!el.closest)return; var tp=el.closest('.topic'); if(!tp)return;
     var nx=tp.nextElementSibling,c=0;
     while(nx&&c<3){ var m=nx.querySelector&&nx.querySelector('[data-vsrc]'); if(m)prefetchURL(m.getAttribute('data-vsrc')); nx=nx.nextElementSibling; c++; } }
   // Lazy mount: only on-screen videos exist as <video> elements, so iOS never runs out of memory.
   var vmount=new IntersectionObserver(function(es){es.forEach(function(e){
-    if(e.isIntersecting)mountVid(e.target);else unmountVid(e.target);});},{root:null,rootMargin:'350px',threshold:.2});
+    if(e.isIntersecting&&isActiveMediaTarget(e.target))mountVid(e.target);else unmountVid(e.target);});},{root:null,rootMargin:'350px',threshold:.2});
+  function isActiveMediaTarget(el){var s=el&&el.closest&&el.closest('.screen');return !s||s.classList.contains('active');}
+  function isNearViewport(el,margin){var r=el.getBoundingClientRect(),m=margin==null?260:margin;
+    return r.bottom>=-m&&r.top<=window.innerHeight+m&&r.right>=-m&&r.left<=window.innerWidth+m;}
   function _teardownVid(el){var v=el._v;if(!v)return;try{v.pause();v.removeAttribute('src');v.load();}catch(e){}v.remove();el._v=null;
     var _tnt=el.querySelector('.vtint');if(_tnt)_tnt.style.display='';}
   function mountVid(el){
-    if(el._v||!el.getAttribute('data-vsrc'))return;
+    if(el._v||!el.getAttribute('data-vsrc')||!isActiveMediaTarget(el))return;
     var src=el.getAttribute('data-vsrc');
     var poster=src.replace(/\.mp4(\?.*)?$/,'.jpg'); // first-frame still: shows instantly, no gradient flash
     var v=document.createElement('video');
     v.className='vid'+(el.hasAttribute('data-vchart')?' chartvid':'');
-    v.muted=true;v.loop=true;v.playsInline=true;v.setAttribute('muted','');v.setAttribute('playsinline','');v.preload='auto';v.style.zIndex='1';
+    v.muted=true;v.loop=true;v.playsInline=true;v.setAttribute('muted','');v.setAttribute('playsinline','');v.preload=isPhone?'metadata':'auto';v.style.zIndex='1';
     v.setAttribute('poster',poster);
     // Keep the same still on the card itself so unmount (scroll-away) reveals the frame, not the gradient.
     el.style.backgroundImage='url("'+poster+'")';el.style.backgroundSize='cover';el.style.backgroundPosition='center';
@@ -2635,6 +2639,10 @@ body{font-family:"Ease Standard","EaseStandard","Ease",PP-Diatype,"Diatype",syst
   }
   function unmountVid(el){var i=_vlive.indexOf(el);if(i>=0)_vlive.splice(i,1);_teardownVid(el);}
   function observeVids(container){if(!container)return;container.querySelectorAll('[data-vsrc]').forEach(function(el){vmount.observe(el);});}
+  function releaseMediaIn(container){if(!container)return;container.querySelectorAll('[data-vsrc]').forEach(function(el){unmountVid(el);try{vmount.unobserve(el);}catch(e){}});}
+  function refreshActiveMedia(container){container=container||document.querySelector('.screen.active');if(!container)return;
+    observeVids(container);
+    container.querySelectorAll('[data-vsrc]').forEach(function(el){if(isNearViewport(el,isPhone?180:360))mountVid(el);else unmountVid(el);});}
   // Images for a trend: the multi-image array if present, else the single hero image.
   function imgsOf(t){var arr=[];if(t.img)arr.push(t.img);if(t.imgs)t.imgs.forEach(function(u){if(arr.indexOf(u)<0)arr.push(u);});return arr;}
   // Feed media = 3 image slides (padded from the trend's images), plus the editorial quote.
@@ -2678,6 +2686,7 @@ body{font-family:"Ease Standard","EaseStandard","Ease",PP-Diatype,"Diatype",syst
 
   function renderFeed(kind){
     feedKind=kind;
+    releaseMediaIn(feed);
     feed.innerHTML='';
     (ORDERS[kind]||order).forEach(function(id){
       var t=T[id]; carousel[id]={i:0,n:proMode?1:mediaItemsOf(t).length};
@@ -2691,6 +2700,7 @@ body{font-family:"Ease Standard","EaseStandard","Ease",PP-Diatype,"Diatype",syst
     setBal();
     feed.scrollTop=0;
     fitTitles();
+    refreshActiveMedia(feed);
   }
   // Shrink each feed title so it always fits on one line beside the degree/percentage.
   function fitTitles(){
@@ -2726,42 +2736,34 @@ body{font-family:"Ease Standard","EaseStandard","Ease",PP-Diatype,"Diatype",syst
 
   var screens={feed:'s-feed',explore:'s-explore',detail:'s-detail',forecasts:'s-forecasts',taste:'s-taste',profile:'s-profile',settings:'s-settings',collection:'s-collection',timeline:'s-timeline',posts:'s-posts',saved:'s-saved',stub:'s-stub',userlist:'s-userlist',postdetail:'s-postdetail',notif:'s-notif',editprofile:'s-editprofile',security:'s-security',help:'s-help',invite:'s-invite',article:'s-article',signaldetail:'s-signaldetail'};
   function currentScreenKey(){var k='feed';Object.keys(screens).forEach(function(key){if(document.getElementById(screens[key]).classList.contains('active'))k=key;});return k;}
+  var phoneShell=document.getElementById('phone');
+  function lockPhoneShellScroll(){if(!phoneShell)return;if(phoneShell.scrollTop)phoneShell.scrollTop=0;if(phoneShell.scrollLeft)phoneShell.scrollLeft=0;}
+  if(phoneShell)phoneShell.addEventListener('scroll',lockPhoneShellScroll,{passive:true});
+  function cleanupInactiveMedia(activeTab){
+    Object.keys(screens).forEach(function(k){if(k!==activeTab)releaseMediaIn(document.getElementById(screens[k]));});
+  }
+  function activateScreenMedia(tab){var sid=screens[tab],el=sid&&document.getElementById(sid);if(el)refreshActiveMedia(el);}
   var navStack=[];
   var ROOTS=['feed','explore','forecasts','posts','taste'];
   function show(tab,isBack){
     var cur=currentScreenKey();
     if(!isBack){ if(ROOTS.indexOf(tab)>=0){navStack=[];} else if(cur!==tab){navStack.push(cur);} }
     Object.keys(screens).forEach(function(k){document.getElementById(screens[k]).classList.toggle('active',k===tab);});
+    lockPhoneShellScroll();
     var SUBS=['detail','profile','settings','collection','timeline','saved','stub','userlist','postdetail','notif','editprofile','security','help','invite','article','signaldetail'];
     var sub=SUBS.indexOf(tab)>=0;
     var navKey=sub?null:tab;
     document.querySelector('.tabbar').style.display=(sub&&tab!=='profile')?'none':'';
     document.querySelectorAll('.tabbar button').forEach(function(b){b.setAttribute('aria-current',b.getAttribute('data-tab')===navKey?'true':'false');});
     if(navKey)moveInd();
-    if(tab!=='detail'){stopLiveTL();
-      // Free ALL detail-page clips (hero carousel + related cards) when leaving. Screens stay
-      // laid out at opacity:0, so the IntersectionObserver won't auto-unmount them — without this,
-      // videos accumulate across trend visits and can crash iOS Safari. Do it explicitly.
-      var _det=document.getElementById('s-detail');
-      if(_det)_det.querySelectorAll('[data-vsrc]').forEach(function(el){if(typeof unmountVid==='function')unmountVid(el);});
-    }
-    // Same memory hygiene for the posts list + post detail (both rebuilt on re-entry).
-    if(tab!=='posts'){var _pl=document.getElementById('posts-list');
-      if(_pl)_pl.querySelectorAll('[data-vsrc]').forEach(function(el){if(typeof unmountVid==='function')unmountVid(el);});}
-    if(tab!=='postdetail'){var _pc=document.getElementById('pd-content');
-      if(_pc)_pc.querySelectorAll('[data-vsrc]').forEach(function(el){if(typeof unmountVid==='function')unmountVid(el);});}
-    if(tab!=='collection'){var _cg=document.getElementById('coll-grid');
-      if(_cg)_cg.querySelectorAll('[data-vsrc]').forEach(function(el){if(typeof unmountVid==='function')unmountVid(el);});}
-    if(tab!=='profile'){['pf-leads','pf-active'].forEach(function(gid){var _pf=document.getElementById(gid);
-      if(_pf)_pf.querySelectorAll('[data-vsrc]').forEach(function(el){if(typeof unmountVid==='function')unmountVid(el);});});}
-    if(tab!=='forecasts'){var _fo=document.getElementById('fc-open');
-      if(_fo)_fo.querySelectorAll('[data-vsrc]').forEach(function(el){if(typeof unmountVid==='function')unmountVid(el);});}
-    if(tab!=='signaldetail'){var _sc=document.getElementById('sig-content');
-      if(_sc)_sc.querySelectorAll('[data-vsrc]').forEach(function(el){if(typeof unmountVid==='function')unmountVid(el);});}
+    if(tab!=='detail')stopLiveTL();
+    if(tab!=='feed')endHold();
+    cleanupInactiveMedia(tab);
     if(tab==='forecasts')renderForecasts();
     if(tab==='taste')renderTaste();
     if(tab==='explore')renderExplore();
     if(tab==='posts')renderPosts();
+    activateScreenMedia(tab);
   }
   function goBack(){var prev=navStack.length?navStack.pop():'feed';show(prev,true);}
 
@@ -2823,14 +2825,33 @@ body{font-family:"Ease Standard","EaseStandard","Ease",PP-Diatype,"Diatype",syst
       return proMarketSort==='losers'?ca-cb:cb-ca;});
     return ids;
   }
+  var exIds=[], exShown=0, EX_BATCH=isPhone?8:14, exScrollTick=false;
+  function renderExploreChunk(reset){
+    var list=document.getElementById('ex-list');if(!list)return;
+    if(reset){releaseMediaIn(list);list.innerHTML='';exShown=0;}
+    var next=Math.min(exShown+EX_BATCH,exIds.length);
+    if(next>exShown){
+      list.insertAdjacentHTML('beforeend',exIds.slice(exShown,next).map(exRowHTML).join(''));
+      exShown=next;
+      observeVids(list);
+      refreshActiveMedia(list);
+    }
+  }
+  function maybeLoadExploreMore(){
+    if(currentScreenKey()!=='explore'||exShown>=exIds.length)return;
+    var sc=document.querySelector('#s-explore .scrollarea');if(!sc)return;
+    if(sc.scrollTop+sc.clientHeight>=sc.scrollHeight-520)renderExploreChunk(false);
+  }
   function renderExplore(){
     var q=(document.getElementById('ex-search').value||'').trim().toLowerCase();
     var title=document.querySelector('#s-explore .shead h1');
+    var list=document.getElementById('ex-list');
     if(proMode){
       if(title)title.textContent='Markets';
       document.querySelectorAll('#mkt-bar button').forEach(function(b){b.classList.toggle('on',b.getAttribute('data-sort')===proMarketSort);});
       var ids=marketIds(q);
-      document.getElementById('ex-list').innerHTML=ids.map(marketRowHTML).join('');
+      exIds=[];exShown=0;releaseMediaIn(list);
+      list.innerHTML=ids.map(marketRowHTML).join('');
       document.getElementById('ex-empty').textContent=proMarketSort==='watch'?'Your watchlist is empty. Tap ★ on any market.':'No trends match that search.';
       document.getElementById('ex-empty').style.display=ids.length?'none':'block';
       return;
@@ -2843,8 +2864,8 @@ body{font-family:"Ease Standard","EaseStandard","Ease",PP-Diatype,"Diatype",syst
     if(sk==='latest'||sk==='trending'){ids2.sort(function(a,b){return trendChg(T[b])-trendChg(T[a]);});}
     else if(sk==='newest'){ids2.sort(function(a,b){return (exSeed(b)-exSeed(a));});}
     else if(sk==='oldest'){ids2.sort(function(a,b){return (exSeed(a)-exSeed(b));});}
-    document.getElementById('ex-list').innerHTML=ids2.map(exRowHTML).join('');
-    observeVids(document.getElementById('ex-list'));
+    exIds=ids2;
+    renderExploreChunk(true);
     document.getElementById('ex-empty').textContent='No trends match that search.';
     document.getElementById('ex-empty').style.display=ids2.length?'none':'block';
   }
@@ -2895,6 +2916,11 @@ body{font-family:"Ease Standard","EaseStandard","Ease",PP-Diatype,"Diatype",syst
     document.getElementById('exf-loc-lbl').textContent=(exFilters.city&&exFilters.city!=='all')?exFilters.city:c[0].toUpperCase();
   }
   document.getElementById('ex-search').addEventListener('input',renderExplore);
+  var exScroll=document.querySelector('#s-explore .scrollarea');
+  if(exScroll)exScroll.addEventListener('scroll',function(){
+    if(exScrollTick)return;exScrollTick=true;
+    requestAnimationFrame(function(){exScrollTick=false;maybeLoadExploreMore();});
+  },{passive:true});
   function moveInd(){var a=document.querySelector('.tabbar button[aria-current=true]');if(!a)return;
     var ind=document.getElementById('tab-ind');ind.style.left=a.offsetLeft+'px';ind.style.width=a.offsetWidth+'px';}
 
@@ -3118,6 +3144,7 @@ body{font-family:"Ease Standard","EaseStandard","Ease",PP-Diatype,"Diatype",syst
   function netPull(id){var t=T[id];if(!t||!t.sub)return 0;var s=0;t.sub.forEach(function(x){var st=T[x.id];if(st)s+=(x.impact/100)*(st.chg||0);});return s;}
   function renderSubs(id){
     var t=T[id],host=document.getElementById('d-subs');if(!host||!t.sub)return;
+    releaseMediaIn(host);
     host.innerHTML=t.sub.map(function(x,i){var st=T[x.id];if(!st)return '';
       var up=(st.chg||0)>=0,chg=(up?'+':'')+Math.round(st.chg||0)+'%';
       // Play a clip on the related-trend card when that sub-trend has clips.
@@ -3172,7 +3199,7 @@ body{font-family:"Ease Standard","EaseStandard","Ease",PP-Diatype,"Diatype",syst
       return;
     }
     det.classList.remove('prodetail');
-    var car=document.getElementById('d-car'); car.innerHTML=carTiles(t,id); car.scrollLeft=0;
+    var car=document.getElementById('d-car'); releaseMediaIn(car); car.innerHTML=carTiles(t,id); car.scrollLeft=0;
     observeVids(car);
     car.querySelectorAll('[data-vsrc]').forEach(function(el){mountVid(el);});
     document.getElementById('d-name').textContent=t.name;
@@ -3197,7 +3224,8 @@ body{font-family:"Ease Standard","EaseStandard","Ease",PP-Diatype,"Diatype",syst
     renderTimeline();
     startLiveTL();
     var dcIm=imgsOf(t);
-    document.getElementById('d-curators').innerHTML=(COLLECTIONS[id]||[]).map(function(cl,i){
+    var dcur=document.getElementById('d-curators');releaseMediaIn(dcur);
+    dcur.innerHTML=(COLLECTIONS[id]||[]).map(function(cl,i){
       var u=dcIm.length?dcIm[i%dcIm.length]:null;
       // Collections aren't a single trend, so recycle a clip from a member trend that has one.
       var members=(window.COLL_TRENDS&&COLL_TRENDS[id+'#'+i])||[id], cvs='';
@@ -3280,6 +3308,7 @@ body{font-family:"Ease Standard","EaseStandard","Ease",PP-Diatype,"Diatype",syst
     var leadsEmpty=!(p.leads&&p.leads.length);
     document.getElementById('pf-leads-h').style.display=leadsEmpty?'none':'';
     document.getElementById('pf-leads').style.display=leadsEmpty?'none':'';
+    releaseMediaIn(document.getElementById('pf-leads'));releaseMediaIn(document.getElementById('pf-active'));
     document.getElementById('pf-leads').innerHTML=(p.leads||[]).map(trendRowHTML).join('');
     document.getElementById('pf-active').innerHTML=(p.active||[]).map(trendRowHTML).join('');
     ['pf-leads','pf-active'].forEach(function(gid){var c=document.getElementById(gid);if(!c)return;observeVids(c);c.querySelectorAll('[data-vsrc]').forEach(function(el){mountVid(el);});});
@@ -3356,6 +3385,7 @@ body{font-family:"Ease Standard","EaseStandard","Ease",PP-Diatype,"Diatype",syst
   function renderPostDetail(){
     var p=POSTS[curPost], t=T[p.id];
     var v=postVotes[curPost]||'', shown=p.up+(v==='up'?1:0)-(v==='down'?1:0), n=countComments(curPost);
+    releaseMediaIn(document.getElementById('pd-content'));
     document.getElementById('pd-content').innerHTML=
       '<div class="pd-post">'+
         '<span class="post-th pd-th" data-go-trend="'+p.id+'"'+(vcount(p.id)?(' data-vsrc="media/'+p.id+'/0'+((curPost%vcount(p.id))+1)+'.mp4"'):'')+' style="background-image:'+(t.img?'url('+t.img+'),':'')+'linear-gradient(135deg,'+t.theme[0]+','+t.theme[2]+');background-size:cover;background-position:center"></span>'+
@@ -3425,6 +3455,7 @@ body{font-family:"Ease Standard","EaseStandard","Ease",PP-Diatype,"Diatype",syst
   }
   function renderCollGallery(ids){
     var grid=document.getElementById('coll-grid');
+    releaseMediaIn(grid);
     grid.innerHTML=ids.map(function(id,gi){var s=T[id];if(!s)return '';
       var g='linear-gradient(160deg,'+s.theme[0]+','+(s.theme[2]||s.theme[1])+')';
       var im=imgsOf(s),u=im.length?im[0]:null;
@@ -3563,7 +3594,8 @@ body{font-family:"Ease Standard","EaseStandard","Ease",PP-Diatype,"Diatype",syst
     if(postsSort==='new'){arr.sort(function(a,b){return timeVal(a.t)-timeVal(b.t);});}
     else if(postsSort==='top'){arr.sort(function(a,b){return b.up-a.up;});}
     else{arr.sort(function(a,b){return (b.up/Math.pow(timeVal(b.t)+2,0.8))-(a.up/Math.pow(timeVal(a.t)+2,0.8));});}
-    document.getElementById('posts-list').innerHTML=arr.map(function(p){var t=T[p.id];
+    var postsList=document.getElementById('posts-list');releaseMediaIn(postsList);
+    postsList.innerHTML=arr.map(function(p){var t=T[p.id];
       var pid=POSTS.indexOf(p), v=postVotes[pid]||'', shown=p.up+(v==='up'?1:0)-(v==='down'?1:0);
       var pvs=vcount(p.id)?(' data-vsrc="media/'+p.id+'/0'+((pid%vcount(p.id))+1)+'.mp4"'):'';
       return '<div class="post" data-post="'+pid+'">'+
@@ -3824,6 +3856,7 @@ body{font-family:"Ease Standard","EaseStandard","Ease",PP-Diatype,"Diatype",syst
         '<div class="pstate"><span class="when">resolves in '+p.day+'d · '+(ahead?'currently ahead':'currently behind')+'</span>'+
         '<button class="btn-resolve" data-resolve="'+idx+'">Resolve now</button></div></div></div>';
     });
+    releaseMediaIn(document.getElementById('fc-open'));
     document.getElementById('fc-open').innerHTML=oh;
     (function(){var c=document.getElementById('fc-open');observeVids(c);c.querySelectorAll('[data-vsrc]').forEach(function(el){mountVid(el);});})();
     // HISTORY (ledger, newest first)
@@ -3922,6 +3955,7 @@ body{font-family:"Ease Standard","EaseStandard","Ease",PP-Diatype,"Diatype",syst
         '<button class="cta-place" data-resolve="'+idx+'">Resolve now</button>'+
         '<button class="sig-viewtrend" data-go-trend="'+p.id+'">View trend</button>'+
       '</div>';
+    releaseMediaIn(document.getElementById('sig-content'));
     document.getElementById('sig-content').innerHTML=html;
     (function(){var c=document.getElementById('sig-content');observeVids(c);c.querySelectorAll('[data-vsrc]').forEach(function(el){mountVid(el);});})();
     show('signaldetail');
@@ -3937,7 +3971,7 @@ body{font-family:"Ease Standard","EaseStandard","Ease",PP-Diatype,"Diatype",syst
     }else if(open>0){rk.innerHTML='—';acc.textContent=open+' open call'+(open>1?'s':'')+' — resolve them to build your record.';pos.textContent='—';sub.textContent=open+' open, none settled';}
     else{rk.innerHTML='—';acc.textContent='Forecast to start your track record.';pos.textContent='—';sub.textContent='unranked';}}
 
-  function kickVideos(){document.querySelectorAll('.feed video, #d-vid, #ex-list video').forEach(function(v){v.muted=true;var q=v.play&&v.play();if(q&&q.catch)q.catch(function(){});});}
+  function kickVideos(){document.querySelectorAll('.screen.active video').forEach(function(v){v.muted=true;var q=v.play&&v.play();if(q&&q.catch)q.catch(function(){});});}
   document.addEventListener('pointerdown',kickVideos);document.addEventListener('click',kickVideos);
 
   // ===== All / Trending / Niche switcher =====
