@@ -335,7 +335,6 @@
   }
   function topicHTML(t,id){
     var items=mediaItemsOf(t);
-    var dots=proMode?'':items.map(function(_,k){return '<span class="'+(k===0?'on':'')+'"></span>';}).join('');
     var niche=t.kind==='niche';
     var cur=CUR[id]||{calls:10,hit:0.7,rallied:20,yf:0,col:"#D8C9A4"};
     var right=Math.round(cur.hit*cur.calls);
@@ -355,7 +354,6 @@
     var media=proMode?chartHTML(t,id):items.map(function(m){return mediaHTML(t,m);}).join('');
     return '<div class="mtrack" data-track>'+media+'</div>'+
       '<div class="scrim-bot"></div>'+
-      '<div class="dots" data-dots>'+dots+'</div>'+
       '<div class="fmeta" data-go role="button">'+
         '<div class="metarow"><span class="deg'+(t.up?'':' dn')+'">'+t.deg+'°</span><span class="sentmini '+(t.up?'up':'dn')+'">'+sentLabel+'</span></div>'+
         '<div class="trow"><div class="tname">'+t.name+'</div></div>'+
@@ -435,7 +433,6 @@
     var c=carousel[id];if(!c)return;
     c.i=((i%c.n)+c.n)%c.n;
     renderCubePosition(el,id,c.i,instant);
-    el.querySelectorAll('[data-dots] span').forEach(function(s,k){s.classList.toggle('on',k===c.i);});
     refreshActiveMedia(el);
   }
   function wireCarousel(el,id){

@@ -36,13 +36,14 @@ The app intentionally stays framework-free:
 - `wireCarousel()` / `renderCubePosition()` - Feed horizontal swipes are axis-locked with
   `touch-action: pan-y`; vertical swipes remain native feed scrolling while horizontal swipes render the
   cube-style media transition. One-slide tracks, including Pro mode charts, skip horizontal carousel
-  dragging so the chart hold/scrub gesture owns horizontal movement.
+  dragging so the chart hold/scrub gesture owns horizontal movement. Carousel position is intentionally
+  not shown with top dot/page indicators.
 - `cmpRenderOpts()` - compose-sheet trend picker rows use the same thumbnail clip pipeline as Posts,
   falling back to a related trend clip when a trend has no dedicated media; previews are constrained to
   the post-card aspect ratio and released when the picker closes.
 - `scripts/mobile-carousel-smoke.mjs` - launches local Chrome through DevTools, renders the app in a
-  mobile viewport, verifies horizontal media swipes, vertical feed scrolling, compose picker previews,
-  and bounded mounted videos.
+  mobile viewport, verifies horizontal media swipes without top indicators, vertical feed scrolling,
+  compose picker previews, Pro chart scrubbing, and bounded mounted videos.
 - `renderExploreChunk()` - batched Search rendering; do not render every trend and every clip at once.
 - `lockPhoneShellScroll()` - keeps the `#phone` shell fixed at `scrollTop = 0`; only internal
   `.scrollarea` elements should scroll.

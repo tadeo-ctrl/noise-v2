@@ -22,6 +22,7 @@ assert(!html.match(/<script>[\s\S]*<\/script>/), 'index.html should not contain 
 assert(css.includes('@font-face'), 'app.css should contain the embedded font definitions');
 assert(css.includes('touch-action:pan-y'), 'feed carousel must preserve native vertical panning');
 assert(css.includes('transform-style:preserve-3d'), 'feed carousel should keep a 3D transform context');
+assert(!css.includes('.dots{') && !appJs.includes('data-dots') && !appJs.includes('class="dots"'), 'feed carousel top indicators should not render');
 assert(css.includes('.cmp-opt-media') && css.includes('aspect-ratio:205/444'), 'compose trend picker previews should match post video aspect ratio');
 assert(css.includes('.cmp-opt{display:flex;align-items:flex-start'), 'compose trend picker labels should align to the top of video previews');
 new vm.Script(dataJs, { filename: 'scripts/data.js' });

@@ -198,7 +198,8 @@ async function main() {
     await waitForApp(cdp, sessionId);
     const before = await readState(cdp, sessionId);
     assert(before.currentId === 'humanoidrobots', `expected first trend, got ${before.currentId}`);
-    assert(before.firstDot === 0, `expected first slide active, got ${before.firstDot}`);
+    assert(before.firstSlide === 0, `expected first slide active, got ${before.firstSlide}`);
+    assert(before.carouselIndicators === 0, `top carousel indicators should not render, got ${before.carouselIndicators}`);
     assert(before.touchAction === 'pan-y', `expected pan-y touch action, got ${before.touchAction}`);
     assert(before.transformStyle === 'preserve-3d', `expected preserve-3d transform style, got ${before.transformStyle}`);
     assert(before.mountedVideos <= 4, `too many videos mounted initially: ${before.mountedVideos}`);
@@ -213,7 +214,8 @@ async function main() {
     const afterHorizontal = await readState(cdp, sessionId);
     assert(afterHorizontal.currentId === before.currentId, 'horizontal drag should not change trend');
     assert(afterHorizontal.scrollTop < 12, `horizontal drag should not scroll feed, got ${afterHorizontal.scrollTop}`);
-    assert(afterHorizontal.firstDot === 1, `horizontal drag should advance to slide 1, got ${afterHorizontal.firstDot}`);
+    assert(afterHorizontal.firstSlide === 1, `horizontal drag should advance to slide 1, got ${afterHorizontal.firstSlide}`);
+    assert(afterHorizontal.carouselIndicators === 0, `top carousel indicators should stay hidden after swiping, got ${afterHorizontal.carouselIndicators}`);
     assert(afterHorizontal.mountedVideos <= 4, `too many videos mounted after horizontal drag: ${afterHorizontal.mountedVideos}`);
 
     await cdp.send('Input.dispatchMouseEvent', {
@@ -326,8 +328,9 @@ async function readState(cdp, sessionId) {
     return {
       scrollTop: Math.round(feed.scrollTop),
       currentId: current && current.getAttribute('data-id'),
-      currentDot: current ? Array.from(current.querySelectorAll('[data-dots] span')).findIndex((dot) => dot.classList.contains('on')) : -1,
-      firstDot: first ? Array.from(first.querySelectorAll('[data-dots] span')).findIndex((dot) => dot.classList.contains('on')) : -1,
+      currentSlide: current ? Array.from(current.querySelectorAll('[data-track] .media')).findIndex((slide) => slide.getAttribute('data-slide-mount') === '1') : -1,
+      firstSlide: first ? Array.from(first.querySelectorAll('[data-track] .media')).findIndex((slide) => slide.getAttribute('data-slide-mount') === '1') : -1,
+      carouselIndicators: document.querySelectorAll('[data-dots], .dots').length,
       mountedVideos: document.querySelectorAll('video').length,
       touchAction: getComputedStyle(document.querySelector('[data-track]')).touchAction,
       transformStyle: getComputedStyle(document.querySelector('[data-track]')).transformStyle,

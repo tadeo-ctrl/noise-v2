@@ -91,10 +91,6 @@ body{font-family:"Ease Standard","EaseStandard","Ease",PP-Diatype,"Diatype",syst
 .pill{display:inline-flex;align-items:center;gap:7px;border-radius:var(--r-pill);padding:7px 12px;font-size:11px;font-weight:600;letter-spacing:.04em;color:#fff;}
 .pill.live i{width:6px;height:6px;border-radius:50%;background:#FF5A4D;box-shadow:0 0 9px #FF5A4D;animation:pulse 1.6s ease-in-out infinite;}
 @keyframes pulse{0%,100%{opacity:1}50%{opacity:.4}}
-.dots{display:flex;position:absolute;top:60px;left:50%;transform:translateX(-50%);z-index:6;gap:6px;}
-.dots span{width:6px;height:6px;border-radius:50%;background:rgba(255,255,255,.4);transition:all .3s;}
-.dots span.on{background:#fff;width:18px;border-radius:3px;}
-
 .rail{position:absolute;right:14px;bottom:188px;z-index:6;display:flex;flex-direction:column;gap:10px;align-items:center;}
 .rb{width:44px;height:44px;border-radius:50%;cursor:pointer;display:flex;align-items:center;justify-content:center;color:#fff;padding:0;border:1px solid var(--glass-stroke);}
 .rb svg{width:23px;height:23px;stroke:#fff;fill:none;stroke-width:1.7;}
@@ -459,8 +455,6 @@ body{font-family:"Ease Standard","EaseStandard","Ease",PP-Diatype,"Diatype",syst
   .feedbal{display:inline-flex;align-items:center;gap:6px;border:none;background:none;cursor:pointer;padding:0;
     font-family:inherit;font-size:14px;font-weight:700;color:#fff;font-variant-numeric:tabular-nums;text-shadow:0 1px 8px rgba(0,0,0,.55);}
   .feedbal .dot{color:var(--rel);font-size:12px;}
-  .dots{top:98px;}
-
   /* ===== Niche feed cues ===== */
   /* CULT is an identity badge, not a direction — kept neutral so blue only ever means "cooling". */
   .pill.cult{color:#fff;background:rgba(255,255,255,.14);border:1px solid var(--glass-stroke);}
@@ -1142,7 +1136,6 @@ body{font-family:"Ease Standard","EaseStandard","Ease",PP-Diatype,"Diatype",syst
     /* clear the Dynamic Island / notch and the home indicator */
     .feedmenu{top:calc(env(safe-area-inset-top) + 12px);}
     .feedseg{top:calc(env(safe-area-inset-top) + 29px);}
-    .dots{top:calc(env(safe-area-inset-top) + 58px);}
     .backbtn{top:calc(env(safe-area-inset-top) + 10px);}
     .feedtopr{top:calc(env(safe-area-inset-top) + 14px);}
     .tabbar{bottom:calc(env(safe-area-inset-bottom) + 12px);}
