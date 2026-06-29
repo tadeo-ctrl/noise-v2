@@ -38,6 +38,11 @@ The app intentionally stays framework-free:
   cube-style media transition. One-slide tracks, including Pro mode charts, skip horizontal carousel
   dragging so the chart hold/scrub gesture owns horizontal movement. Carousel position is intentionally
   not shown with top dot/page indicators.
+- `currentFeedTopicId()` / `renderFeed(kind, restoreId)` - Pro mode rebuilds the Feed from video slides
+  into chart cards. Preserve the visible trend id through that rebuild so returning from Settings does
+  not jump the user back to the first trend.
+- Pro feed chart cards keep the trend video clear at rest. The video blur is only applied while the
+  `.chartmedia.holding` scrub interaction is active, matching the crosshair activation state.
 - `cmpRenderOpts()` - compose-sheet trend picker rows use the same thumbnail clip pipeline as Posts,
   falling back to a related trend clip when a trend has no dedicated media; previews are constrained to
   the post-card aspect ratio and released when the picker closes.

@@ -362,7 +362,16 @@
       '</div>';
   }
 
-  function renderFeed(kind){
+  function currentFeedTopicId(){
+    var topics=feed.querySelectorAll('.topic');if(!topics.length)return null;
+    var mid=feed.scrollTop+feed.clientHeight/2;
+    for(var i=0;i<topics.length;i++){
+      var top=topics[i].offsetTop,bottom=top+topics[i].offsetHeight;
+      if(top<=mid&&bottom>=mid)return topics[i].getAttribute('data-id');
+    }
+    return topics[0].getAttribute('data-id');
+  }
+  function renderFeed(kind,restoreId){
     feedKind=kind;
     releaseMediaIn(feed);
     feed.innerHTML='';
@@ -376,7 +385,11 @@
     });
     observeVids(feed);
     setBal();
-    feed.scrollTop=0;
+    if(restoreId){
+      var target=feed.querySelector('.topic[data-id="'+restoreId+'"]');
+      feed.scrollTop=target?target.offsetTop:0;
+      if(target)currentId=restoreId;
+    }else feed.scrollTop=0;
     fitTitles();
     refreshActiveMedia(feed);
   }
@@ -1439,7 +1452,7 @@
     var tlm=e.target.closest('#d-sigmore'); if(tlm){openTimeline(currentId); return;}
     var col=e.target.closest('[data-collection]'); if(col){openCollection(currentId,+col.getAttribute('data-collection')); return;}
     var sw=e.target.closest('.switch'); if(sw){var son=sw.getAttribute('aria-pressed')!=='true';sw.setAttribute('aria-pressed',son?'true':'false');
-      if(sw.id==='set-pro'){proMode=son;document.getElementById('phone').classList.toggle('pro',proMode);renderFeed(feedKind);kickVideos();if(currentScreenKey()==='explore')renderExplore();}
+      if(sw.id==='set-pro'){var restoreTopic=currentFeedTopicId();proMode=son;document.getElementById('phone').classList.toggle('pro',proMode);renderFeed(feedKind,restoreTopic);kickVideos();if(currentScreenKey()==='explore')renderExplore();}
       if(sw.id==='tpsl-on')document.getElementById('tpsl-fields').style.display=son?'':'none';
       return;}
     var vt=e.target.closest('.pr.vote'); if(vt){var pid=vt.getAttribute('data-pid'),d=vt.getAttribute('data-vote');postVotes[pid]=(postVotes[pid]===d)?'':d;renderPosts();if(currentScreenKey()==='postdetail')renderPostDetail(); return;}

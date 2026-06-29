@@ -23,6 +23,7 @@ assert(css.includes('@font-face'), 'app.css should contain the embedded font def
 assert(css.includes('touch-action:pan-y'), 'feed carousel must preserve native vertical panning');
 assert(css.includes('transform-style:preserve-3d'), 'feed carousel should keep a 3D transform context');
 assert(!css.includes('.dots{') && !appJs.includes('data-dots') && !appJs.includes('class="dots"'), 'feed carousel top indicators should not render');
+assert(/\.chartvid\{[^}]*filter:blur\(0\)/.test(css) && /@media \(max-width:600px\)[\s\S]*\.chartvid\{filter:blur\(0\)/.test(css) && /\.chartmedia\.holding \.chartvid\{filter:blur\(9px\)/.test(css), 'Pro chart video should only blur while the chart is held');
 assert(css.includes('.cmp-opt-media') && css.includes('aspect-ratio:205/444'), 'compose trend picker previews should match post video aspect ratio');
 assert(css.includes('.cmp-opt{display:flex;align-items:flex-start'), 'compose trend picker labels should align to the top of video previews');
 new vm.Script(dataJs, { filename: 'scripts/data.js' });
@@ -37,6 +38,7 @@ assert(appJs.includes('function renderCubePosition'), 'feed carousel cube render
 assert(appJs.includes('rotateY'), 'feed carousel should use a 3D cube-style transition');
 assert(appJs.includes('setPointerCapture'), 'feed carousel should capture horizontal drags after axis lock');
 assert(appJs.includes('if(c.n<2)') && appJs.includes("cm.classList.contains('holding')"), 'single-slide Pro feed tracks should leave horizontal drags to the chart hold interaction');
+assert(appJs.includes('function currentFeedTopicId()') && appJs.includes('renderFeed(feedKind,restoreTopic)'), 'Pro mode feed rebuild should preserve the currently visible trend');
 assert(appJs.includes('function previewClipId(id)') && appJs.includes('class="cmp-opt-media"') && appJs.includes('clipAttrs(vid,1,true)'), 'compose trend picker should render video-backed trend previews');
 assert(!html.includes('LEEME_EDDY') && !dataJs.includes('LEEME_EDDY') && !appJs.includes('LEEME_EDDY'), 'personal handoff filename should not be referenced');
 assert(!appJs.match(/querySelectorAll\('\[data-vsrc\]'\)\.forEach\(function\(el\)\{mountVid\(el\);/), 'avoid eager mounting entire containers');

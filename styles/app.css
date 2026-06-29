@@ -801,13 +801,13 @@ body{font-family:"Ease Standard","EaseStandard","Ease",PP-Diatype,"Diatype",syst
   .cmp-text::placeholder{color:var(--muted);}
   #cmp-post{margin-top:8px;}
 
-  /* Pro mode: one candlestick trader chart over the blurred trend video.
-     Two states — faint at rest (video shows through) -> full & forward on hold. */
+  /* Pro mode: one candlestick trader chart over the trend video.
+     Two states — clear at rest -> blurred video + full chart on hold. */
   .chartmedia{background:#0b0c10;overflow:hidden;touch-action:pan-y;-webkit-user-select:none;user-select:none;-webkit-touch-callout:none;-webkit-tap-highlight-color:transparent;}
   /* Pro-mode hold scrubs the chart — never trigger iOS text-selection / magnifier on chart areas. */
   .chartmedia *,.pd-panes *{-webkit-user-select:none;user-select:none;-webkit-touch-callout:none;}
   .chartvid{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;transform:scale(1.08);
-    filter:blur(2px) saturate(1.25) brightness(.78);transition:filter .35s ease;}
+    filter:blur(0) saturate(1) brightness(1);transition:filter .35s ease;}
   .chartvtint{position:absolute;inset:0;z-index:2;background:radial-gradient(120% 80% at 50% 40%,rgba(255,150,40,.12),transparent 66%),linear-gradient(180deg,rgba(11,12,16,.12),rgba(11,12,16,.36));transition:background .35s;}
   .chartglow{position:absolute;left:0;right:0;top:26%;height:46%;z-index:2;pointer-events:none;background:radial-gradient(58% 64% at 50% 50%,rgba(255,170,70,.20),transparent 72%);transition:opacity .35s;}
   .svgholder{position:absolute;inset:0;}
@@ -1144,7 +1144,7 @@ body{font-family:"Ease Standard","EaseStandard","Ease",PP-Diatype,"Diatype",syst
     .grain{display:none;}
     .clip .blob{filter:blur(11px);mix-blend-mode:normal;animation:none;}
     .clip .b2,.clip .b3{display:none;}
-    .chartvid{filter:blur(5px) brightness(.64);}
+    .chartvid{filter:blur(0) saturate(1) brightness(1);}
     .glass{-webkit-backdrop-filter:none;backdrop-filter:none;background:rgba(18,19,24,.92);}
     /* Only render the feed card(s) actually on screen — off-screen cards (and their charts,
        SVGs, videos) are skipped by the browser. Keeps memory flat regardless of feed length. */

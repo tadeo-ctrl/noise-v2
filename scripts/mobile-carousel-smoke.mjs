@@ -196,6 +196,7 @@ async function main() {
     await cdp.send('Page.navigate', { url }, sessionId);
 
     await waitForApp(cdp, sessionId);
+    await installVisualHelpers(cdp, sessionId);
     const before = await readState(cdp, sessionId);
     assert(before.currentId === 'humanoidrobots', `expected first trend, got ${before.currentId}`);
     assert(before.firstSlide === 0, `expected first slide active, got ${before.firstSlide}`);
@@ -231,30 +232,57 @@ async function main() {
     assert(afterVertical.scrollTop > 500, `vertical scroll should move feed, got ${afterVertical.scrollTop}`);
     assert(afterVertical.mountedVideos <= 4, `too many videos mounted after vertical scroll: ${afterVertical.mountedVideos}`);
 
+    await evaluate(cdp, sessionId, `document.getElementById('feed-menu').click()`);
+    await waitFor(cdp, sessionId, `document.getElementById('drawer').classList.contains('open')`, 'account drawer');
+    await evaluate(cdp, sessionId, `document.querySelector('#drawer .dr-row[data-tab="settings"]').click()`);
+    await waitFor(cdp, sessionId, `document.getElementById('s-settings').classList.contains('active')`, 'settings screen');
     await evaluate(cdp, sessionId, `document.getElementById('set-pro').click()`);
-    await waitFor(cdp, sessionId, `document.getElementById('phone').classList.contains('pro') && Boolean(document.querySelector('#s-feed .chartmedia'))`, 'pro mode feed');
+    await waitFor(cdp, sessionId, `document.getElementById('phone').classList.contains('pro') && Boolean(document.querySelector('#s-feed .chartmedia'))`, 'pro mode feed rebuild');
+    await evaluate(cdp, sessionId, `document.getElementById('set-back').click()`);
+    await waitFor(cdp, sessionId, `document.getElementById('s-feed').classList.contains('active')`, 'feed return from settings');
+    const afterProToggle = await readState(cdp, sessionId);
+    assert(afterProToggle.currentId === afterVertical.currentId, `Pro mode toggle should keep the visible trend, expected ${afterVertical.currentId}, got ${afterProToggle.currentId}`);
+    assert(afterProToggle.scrollTop > 500, `Pro mode toggle should not reset feed scroll, got ${afterProToggle.scrollTop}`);
+    const proRestVisual = await evaluate(cdp, sessionId, `readCurrentChartVisual()`);
+    assert(!proRestVisual.holding, 'Pro chart should not start in hold state');
+    assert(proRestVisual.blurPx < 0.1, `Pro chart video should not blur at rest, got ${proRestVisual.filter}`);
     const proDrag = await mouseDragAndRead(cdp, sessionId, [
       [90, 360],
       [165, 360],
       [245, 360],
       [315, 360],
     ], `(() => {
-      const chart = document.querySelector('#s-feed .chartmedia');
+      const feed = document.getElementById('feed');
+      const topics = Array.from(document.querySelectorAll('#feed .topic'));
+      const mid = window.innerHeight / 2;
+      const current = topics.find((topic) => {
+        const rect = topic.getBoundingClientRect();
+        return rect.top <= mid && rect.bottom >= mid;
+      });
+      const chart = current && current.querySelector('.chartmedia');
+      const video = chart && chart.querySelector('.chartvid');
       const read = chart && chart.querySelector('.cc-read');
+      const filter = video ? getComputedStyle(video).filter : '';
+      const blur = filter.match(/blur\\(([0-9.]+)px\\)/);
       return {
+        currentId: current && current.getAttribute('data-id'),
         holding: Boolean(chart && chart.classList.contains('holding')),
+        filter,
+        blurPx: blur ? Number(blur[1]) : 0,
         readout: read ? read.textContent : '',
         readoutX: read ? read.dataset.x : '',
         carouselDragging: Boolean(document.querySelector('#s-feed .mtrack.dragging')),
-        scrollTop: Math.round(document.getElementById('feed').scrollTop),
+        scrollTop: Math.round(feed.scrollTop),
         mountedVideos: document.querySelectorAll('video').length,
       };
     })()`);
+    assert(proDrag.currentId === afterVertical.currentId, `Pro chart drag should stay on restored trend, expected ${afterVertical.currentId}, got ${proDrag.currentId}`);
     assert(proDrag.holding, 'Pro mode horizontal drag should activate chart hold');
+    assert(proDrag.blurPx >= 8, `Pro chart video should blur while holding, got ${proDrag.filter}`);
     assert(proDrag.readout && proDrag.readout.includes('°'), `Pro chart crosshair should show a degree readout, got ${proDrag.readout}`);
     assert(proDrag.readoutX, 'Pro chart crosshair should track the horizontal pointer position');
     assert(!proDrag.carouselDragging, 'Pro mode horizontal drag should not activate carousel dragging');
-    assert(proDrag.scrollTop < 12, `Pro chart horizontal drag should not scroll feed, got ${proDrag.scrollTop}`);
+    assert(Math.abs(proDrag.scrollTop - afterProToggle.scrollTop) < 12, `Pro chart horizontal drag should not scroll feed, got ${proDrag.scrollTop} from ${afterProToggle.scrollTop}`);
     assert(proDrag.mountedVideos <= 4, `too many videos mounted during Pro chart drag: ${proDrag.mountedVideos}`);
     await waitFor(cdp, sessionId, `!document.querySelector('#s-feed .chartmedia.holding')`, 'pro chart hold release');
 
@@ -334,6 +362,31 @@ async function readState(cdp, sessionId) {
       mountedVideos: document.querySelectorAll('video').length,
       touchAction: getComputedStyle(document.querySelector('[data-track]')).touchAction,
       transformStyle: getComputedStyle(document.querySelector('[data-track]')).transformStyle,
+    };
+  })()`);
+}
+
+async function installVisualHelpers(cdp, sessionId) {
+  await evaluate(cdp, sessionId, `(() => {
+    window.readCurrentChartVisual = function() {
+      const feed = document.getElementById('feed');
+      const topics = Array.from(document.querySelectorAll('#feed .topic'));
+      const mid = window.innerHeight / 2;
+      const current = topics.find((topic) => {
+        const rect = topic.getBoundingClientRect();
+        return rect.top <= mid && rect.bottom >= mid;
+      });
+      const chart = current && current.querySelector('.chartmedia');
+      const video = chart && chart.querySelector('.chartvid');
+      const filter = video ? getComputedStyle(video).filter : '';
+      const blur = filter.match(/blur\\(([0-9.]+)px\\)/);
+      return {
+        currentId: current && current.getAttribute('data-id'),
+        feedScrollTop: feed ? Math.round(feed.scrollTop) : 0,
+        holding: Boolean(chart && chart.classList.contains('holding')),
+        filter,
+        blurPx: blur ? Number(blur[1]) : 0,
+      };
     };
   })()`);
 }
