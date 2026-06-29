@@ -1,6 +1,8 @@
 {
   "private": true,
   "scripts": {
-    "check": "node scripts/basic-regression.mjs"
+    "check": "npm run check:basic && npm run check:mobile",
+    "check:basic": "node scripts/basic-regression.mjs",
+    "check:mobile": "node scripts/mobile-carousel-smoke.mjs"
   }
 }

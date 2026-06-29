@@ -20,6 +20,8 @@ assert(
 assert(!html.match(/<style>[\s\S]*<\/style>/), 'index.html should not contain inline CSS');
 assert(!html.match(/<script>[\s\S]*<\/script>/), 'index.html should not contain inline JavaScript');
 assert(css.includes('@font-face'), 'app.css should contain the embedded font definitions');
+assert(css.includes('touch-action:pan-y'), 'feed carousel must preserve native vertical panning');
+assert(css.includes('transform-style:preserve-3d'), 'feed carousel should keep a 3D transform context');
 new vm.Script(dataJs, { filename: 'scripts/data.js' });
 new vm.Script(appJs, { filename: 'scripts/app.js' });
 
@@ -28,6 +30,9 @@ assert(appJs.includes("v.preload=isPhone?'metadata':'auto'"), 'mobile videos sho
 assert(appJs.includes('function releaseMediaIn(container)'), 'media cleanup helper is required');
 assert(appJs.includes('function refreshActiveMedia(container)'), 'active-screen media refresh helper is required');
 assert(appJs.includes('function clipAttrs(id,n,thumb,extra)'), 'clip attribute helper is required');
+assert(appJs.includes('function renderCubePosition'), 'feed carousel cube renderer is required');
+assert(appJs.includes('rotateY'), 'feed carousel should use a 3D cube-style transition');
+assert(appJs.includes('setPointerCapture'), 'feed carousel should capture horizontal drags after axis lock');
 assert(!html.includes('LEEME_EDDY') && !dataJs.includes('LEEME_EDDY') && !appJs.includes('LEEME_EDDY'), 'personal handoff filename should not be referenced');
 assert(!appJs.match(/querySelectorAll\('\[data-vsrc\]'\)\.forEach\(function\(el\)\{mountVid\(el\);/), 'avoid eager mounting entire containers');
 assert(!dataJs.includes('document.'), 'data.js should stay free of DOM work');
@@ -36,14 +41,20 @@ const clipManifest = dataJs.match(/var CLIPS=\{([^}]+)\}/);
 assert(clipManifest, 'CLIPS manifest is required');
 
 const missingThumbs = [];
+const missingFeedAssets = [];
 for (const [, slug, countText] of clipManifest[1].matchAll(/([a-z0-9]+):([0-9]+)/g)) {
   const count = Number(countText);
   for (let i = 1; i <= count; i += 1) {
-    const rel = `media/thumbs/${slug}/0${i}.mp4`;
-    if (!fs.existsSync(rel)) missingThumbs.push(rel);
+    const thumb = `media/thumbs/${slug}/0${i}.mp4`;
+    const full = `media/${slug}/0${i}.mp4`;
+    const poster = `media/${slug}/0${i}.jpg`;
+    if (!fs.existsSync(thumb)) missingThumbs.push(thumb);
+    if (!fs.existsSync(full)) missingFeedAssets.push(full);
+    if (!fs.existsSync(poster)) missingFeedAssets.push(poster);
   }
 }
 
 assert(missingThumbs.length === 0, `missing thumbnail clips:\n${missingThumbs.join('\n')}`);
+assert(missingFeedAssets.length === 0, `missing full-screen feed clips/posters:\n${missingFeedAssets.join('\n')}`);
 
 console.log('basic regression checks passed');

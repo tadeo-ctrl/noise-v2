@@ -33,6 +33,12 @@ The app intentionally stays framework-free:
   have mounted `<video>` elements.
 - `clipSrc()` / `clipAttrs()` - full-screen Feed/detail clips use `media/<trend>/...`; small cards use
   `media/thumbs/<trend>/...` to preserve quality where it matters while reducing thumbnail decode cost.
+- `wireCarousel()` / `renderCubePosition()` - Feed horizontal swipes are axis-locked with
+  `touch-action: pan-y`; vertical swipes remain native feed scrolling while horizontal swipes render the
+  cube-style media transition.
+- `scripts/mobile-carousel-smoke.mjs` - launches local Chrome through DevTools, renders the app in a
+  mobile viewport, verifies horizontal media swipes and vertical feed scrolling, and keeps mounted videos
+  bounded.
 - `renderExploreChunk()` - batched Search rendering; do not render every trend and every clip at once.
 - `lockPhoneShellScroll()` - keeps the `#phone` shell fixed at `scrollTop = 0`; only internal
   `.scrollarea` elements should scroll.
@@ -64,4 +70,6 @@ deployed URL with a query parameter such as `?v=8` or `?v=9`.
 npm run check
 ```
 
-The script checks external JavaScript syntax, key media lifecycle safeguards, and thumbnail clip coverage.
+The checks cover external JavaScript syntax, key media lifecycle safeguards, thumbnail/full-screen clip
+coverage, and a rendered Chrome mobile smoke test for the feed carousel. Set `CHROME_PATH` if Chrome is
+not installed in a standard location.

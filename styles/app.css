@@ -59,8 +59,13 @@ body{font-family:"Ease Standard","EaseStandard","Ease",PP-Diatype,"Diatype",syst
 .feed{position:absolute;inset:0;overflow-y:auto;scroll-snap-type:y mandatory;background:#000;}
 .feed::-webkit-scrollbar{width:0;}
 .topic{height:100%;scroll-snap-align:start;position:relative;overflow:hidden;}
-.mtrack{display:flex;height:100%;width:100%;transition:transform .42s cubic-bezier(.2,.85,.25,1);will-change:transform;}
-.media{flex:0 0 100%;height:100%;position:relative;overflow:hidden;background:#0f0f13;}
+.mtrack{position:absolute;inset:0;height:100%;width:100%;overflow:hidden;perspective:980px;transform-style:preserve-3d;
+  touch-action:pan-y;overscroll-behavior-x:contain;-webkit-user-select:none;user-select:none;}
+.media{position:absolute;inset:0;width:100%;height:100%;overflow:hidden;background:#0f0f13;backface-visibility:hidden;
+  transform-origin:center center;transition:transform .44s cubic-bezier(.2,.85,.25,1),opacity .22s ease,visibility .22s ease;
+  will-change:transform,opacity;}
+.mtrack.dragging .media{transition:none;}
+@media (prefers-reduced-motion:reduce){.media{transition:opacity .18s ease,visibility .18s ease;}}
 .clip{position:absolute;inset:0;background:#16161c;}
 .blob{position:absolute;width:150%;height:150%;left:-25%;top:-25%;border-radius:46% 54% 60% 40%;filter:blur(26px);opacity:.88;mix-blend-mode:screen;}
 .b1{background:var(--c1);animation:d1 13s ease-in-out infinite;}
@@ -86,7 +91,7 @@ body{font-family:"Ease Standard","EaseStandard","Ease",PP-Diatype,"Diatype",syst
 .pill{display:inline-flex;align-items:center;gap:7px;border-radius:var(--r-pill);padding:7px 12px;font-size:11px;font-weight:600;letter-spacing:.04em;color:#fff;}
 .pill.live i{width:6px;height:6px;border-radius:50%;background:#FF5A4D;box-shadow:0 0 9px #FF5A4D;animation:pulse 1.6s ease-in-out infinite;}
 @keyframes pulse{0%,100%{opacity:1}50%{opacity:.4}}
-.dots{display:none;position:absolute;top:60px;left:50%;transform:translateX(-50%);z-index:6;gap:6px;}
+.dots{display:flex;position:absolute;top:60px;left:50%;transform:translateX(-50%);z-index:6;gap:6px;}
 .dots span{width:6px;height:6px;border-radius:50%;background:rgba(255,255,255,.4);transition:all .3s;}
 .dots span.on{background:#fff;width:18px;border-radius:3px;}
 
