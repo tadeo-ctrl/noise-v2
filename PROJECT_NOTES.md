@@ -1,19 +1,29 @@
 # NOISE Prototype Notes
 
 ## Overview
-The prototype is a single static file: `index.html` contains the HTML, CSS, and JavaScript.
-There is no build step and no runtime dependency installation.
+The prototype is a static app with no build step and no runtime dependency installation.
 
 The `media/` directory contains trend clips (`media/<trend>/01.mp4`, `02.mp4`, `03.mp4`) and matching
 poster images (`.jpg`). Brand imagery lives in `media/img/`. Vercel cache headers are defined in
 `vercel.json`.
 
 ## Local Development
-Open `index.html` directly in Chrome or Safari. Video paths are relative to `media/`, so keep
-`index.html` and `media/` in the same directory.
+Serve the folder locally so the split CSS and JavaScript files load the same way they do on Vercel:
+
+```bash
+python3 -m http.server 4173 --bind 0.0.0.0
+```
+
+Video paths are relative to the project root, so keep `index.html`, `styles/`, `scripts/`, and `media/`
+in the same directory.
 
 ## Code Map
-All application code lives in `index.html`.
+The app intentionally stays framework-free:
+
+- `index.html` - static app shell and screen markup.
+- `styles/app.css` - all styling, including embedded font data and mobile-specific performance rules.
+- `scripts/data.js` - prototype data, media manifest, and data normalization. Keep DOM work out of this file.
+- `scripts/app.js` - app behavior, routing, rendering, media lifecycle, and event handling.
 
 - `var CLIPS = {...}` - trend clip availability and counts.
 - `var SUBMAP = {...}` - manually curated related trends for detail pages.
@@ -51,7 +61,7 @@ deployed URL with a query parameter such as `?v=8` or `?v=9`.
 
 ## Basic Verification
 ```bash
-node scripts/basic-regression.mjs
+npm run check
 ```
 
-The script checks inline JavaScript syntax, key media lifecycle safeguards, and thumbnail clip coverage.
+The script checks external JavaScript syntax, key media lifecycle safeguards, and thumbnail clip coverage.
